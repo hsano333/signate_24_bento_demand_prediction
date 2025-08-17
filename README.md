@@ -1,1 +1,6 @@
-# signate_24_bento_demand_prediction
+# signate_1_bank_customer
+SIGNATEの練習問題【銀行の顧客ターゲティング】
+
+```
+make main.py
+```
