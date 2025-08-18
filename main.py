@@ -27,7 +27,7 @@ config = Utility().load_yaml_config()
 
 
 def make_models():
-    dataset = ProcessedDataset(config["original_dataset"], "sensor1")
+    dataset = ProcessedDataset(config["original_dataset"], "bento")
     dataset.load()
     dataset_xgboost = ProcessedDatasetXGBoost(
         config["xgboost_dataset"], "xgboost_titani"

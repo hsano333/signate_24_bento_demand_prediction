@@ -50,9 +50,11 @@ class MyTorch(IModel):
         self.start_epoch = 0
         if train is not None and val is not None:
             self.train_dataset = train
+            # print(f"{len(train)=}, {train[0][0]=}")
             self.val_dataset = val
             input_size = self.train_dataset.get_column_number()
             output_size = self.train_dataset.get_label_number()
+            # print(f"input_size={input_size}, output_size={output_size}")
             self.manager = BaseManager(
                 Model(input_size, output_size, config["dropout"]),
                 save_dir,
@@ -124,8 +126,8 @@ class MyTorch(IModel):
         if self.continue_epoch and os.path.isfile(self.save_tmp_model_path):
             checkpoint = torch.load(self.save_tmp_model_path, weights_only=False)
             self.model.load_state_dict(checkpoint["model_state_dict"])
-            adam_params = self.get_adam_params(None, self.config)
-            self.optimizer = self.manager.get_optimizer(adam_params)
+            optimu_params = self.get_optimu_params(None, self.config)
+            self.optimizer = self.manager.get_optimizer(optimu_params)
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
             self.start_epoch = checkpoint["epoch"]
             self.loss = checkpoint["loss"]
@@ -234,7 +236,7 @@ class MyTorch(IModel):
             prediction = self.model(data)
 
         # print(f"Foreact No.1 :tmp_prediction={prediction[0:15]}")
-        return torch.sigmoid(prediction).to("cpu")[:, 0]
+        return (prediction).to("cpu")[:, 0]
 
     def save_model(self, epoch_ndx, best_score, path):
         # path.find(".")
@@ -265,13 +267,15 @@ class MyTorch(IModel):
             # pos_weight=1.0
             # )  # nn.BCELoss + sigmoid
         self.manager.set_loss_func(params["loss"])
-        self.optimizer = self.manager.get_optimizer(params["adam"])
+        self.optimizer = self.manager.get_optimizer(params["optimu"])
         # if self.is_optimize or self.optimizer is None:
         #     adam_params = params["adam"]
         #     self.optimizer = self.manager.get_optimizer(adam_params)
 
         # valid_amp = self.config.get("amp", False)
-        print("----------------------------Start----------------------------")
+        print(
+            f"----------------------------Start {self.start_epoch}/{epoch}----------------------------"
+        )
         for ndx in range(self.start_epoch, epoch):
             trnMetrics = self.do_training(
                 ndx, self.epoch, self.train_batch, params, self.is_optimize
@@ -315,26 +319,40 @@ class MyTorch(IModel):
         print(f" total time:{(time.time() - start_at):.2f}")
         print(f"execute:tensorboard --logdir {self.get_board_log_path()}")
 
-    def get_adam_params(self, trial, model_config):
+    def get_optimu_params(self, trial, model_config):
         is_optimize = self.config.get("is_optimize", False)
         params = {}
         if is_optimize:
-            adam_config = self.config["optimize"].get("adam", {})
-            params = Utility().get_float_params(params, adam_config, trial)
-            params = Utility().get_categorical_params(params, adam_config, trial)
+            optimu_config = self.config["optimize"].get("sgd", {})
+            params = Utility().get_float_params(params, optimu_config, trial)
         else:
             tmp_params = model_config.get("learned_params", {})
-            need_params = ["beta1", "beta2", "eps", "lr", "weight_decay", "amsgrad"]
+            need_params = ["lr", "momentum", "weight_decay"]
             for name in tmp_params:
                 if name in need_params:
                     params[name] = tmp_params[name]
-
-        # print(f"adam_{params=}")
-        params["betas"] = (params["beta1"], params["beta2"])
-        params.pop("beta1", None)
-        params.pop("beta2", None)
-        # print(f"adam_{params=}")
         return params
+
+    # def get_adam_params(self, trial, model_config):
+    #     is_optimize = self.config.get("is_optimize", False)
+    #     params = {}
+    #     if is_optimize:
+    #         adam_config = self.config["optimize"].get("adam", {})
+    #         params = Utility().get_float_params(params, adam_config, trial)
+    #         params = Utility().get_categorical_params(params, adam_config, trial)
+    #     else:
+    #         tmp_params = model_config.get("learned_params", {})
+    #         need_params = ["beta1", "beta2", "eps", "lr", "weight_decay", "amsgrad"]
+    #         for name in tmp_params:
+    #             if name in need_params:
+    #                 params[name] = tmp_params[name]
+    #
+    #     # print(f"adam_{params=}")
+    #     params["betas"] = (params["beta1"], params["beta2"])
+    #     params.pop("beta1", None)
+    #     params.pop("beta2", None)
+    #     # print(f"adam_{params=}")
+    #     return params
 
     def get_loss_params(self, trial, model_config):
         is_optimize = self.config.get("is_optimize", False)
@@ -376,10 +394,10 @@ class MyTorch(IModel):
         is_optimize = self.config.get("is_optimize", False)
         # if is_optimize:
         params = {}
-        adams_params = self.get_adam_params(trial, model_config)
+        optimu_params = self.get_optimu_params(trial, model_config)
         loss_params = self.get_loss_params(trial, model_config)
         torch_params = self.get_torch_params(trial, model_config)
-        params["adam"] = adams_params
+        params["optimu"] = optimu_params
         params["loss"] = loss_params
         params["torch"] = torch_params
         # adams_params
@@ -389,12 +407,13 @@ class MyTorch(IModel):
 
     def get_model_optimized_params(self, model_config):
         params = {}
-        adams_params = self.get_adam_params(None, model_config)
+        # adams_params = self.get_adam_params(None, model_config)
+        optimu_params = self.get_optimu_params(None, model_config)
         loss_params = self.get_loss_params(None, model_config)
         torch_params = self.get_torch_params(None, model_config)
-        params["adam"] = adams_params
+        params["optimu"] = optimu_params
         params["loss"] = loss_params
-        params["torch"] = loss_params
+        params["torch"] = torch_params
         return params
 
     def check_params(self, params):

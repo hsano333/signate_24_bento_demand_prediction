@@ -60,7 +60,7 @@ def train(models):
     ensemble = Stacking(config)
     for model in models:
         ensemble.add_model(*model)
-    result_dataset = ensemble.make_features(MLTask.Classification, forece_make=False)
+    result_dataset = ensemble.make_features(MLTask.Classification, forece_make=True)
 
 
 def predict(train_models, predict_model):

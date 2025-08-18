@@ -80,7 +80,8 @@ class MyLogisticRegression(IModel):
             # n_estimators=self.n_estimators,
         )
         # print(f"{params=}")
-        # print(f"{train_data[0]=}, {train_label[0]=}")
+        print(f"{train_data.shape=}, {train_label.shape=}")
+        print(f"{train_data[0]=}, {train_label[0]=}")
         self.model = logistic.fit(train_data, train_label)
 
         y_pred = self.model.predict_proba(val_data)[:, 1]

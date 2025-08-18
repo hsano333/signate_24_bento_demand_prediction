@@ -65,8 +65,8 @@ class ProcessedDataset(Dataset):
         self.label_number = unique.shape[0]
 
     def make_date_id(self):
-        start_date = "2023-10-30"
-        end_date = "2024-12-01"
+        start_date = "2013-10-28"
+        end_date = "2014-12-01"
 
         all_dates = pd.date_range(start=start_date, end=end_date, freq="D")
         df = pd.DataFrame(all_dates, columns=["date"])
@@ -77,6 +77,7 @@ class ProcessedDataset(Dataset):
         df = df.reset_index()
         df = df.rename(columns={"index": "id"})
         df["week_id"] = df["id"] // 7
+        # print(f"{df["week_id"]=}")
         df = df.drop(columns=["id", "date"])
 
         return df
@@ -93,13 +94,30 @@ class ProcessedDataset(Dataset):
         data["fun"] = data["remarks"].apply(
             lambda x: 1 if x == "お楽しみメニュー" else 0
         )
+        data.loc[data["weather"] == "快晴", "weather"] = "晴れ"
+        data.loc[data["weather"] == "雨", "weather"] = "なし"
+        data.loc[data["weather"] == "雪", "weather"] = "なし"
+        data.loc[data["weather"] == "雷電", "weather"] = "なし"
+
+        data.loc[
+            (
+                (data["remarks"] != "料理長のこだわりメニュー")
+                & (data["remarks"] != "お楽しみメニュー")
+            ),
+            "remarks",
+        ] = "なし"
 
         data["datetime"] = pd.to_datetime(data["datetime"])
         date_df = self.make_date_id()
 
         # print(f"pre:{data.columns=}")
+        # print(f"{data=}")
+        # print(f"{date_df=}")
         data = pd.merge(data, date_df, on="datetime", how="left")
-        # print(f"post:{data.columns=}")
+        # print(f"No.1:{data["week_id"]=}")
+        # # print(f"post:{data.columns=}")
+        print(f"{data["weather"].drop_duplicates()=}")
+        print(f"{data["remarks"].drop_duplicates()=}")
 
         # test
         data = self.convert_onehot_encoder(onehot_encoder, data, "name")
@@ -109,6 +127,7 @@ class ProcessedDataset(Dataset):
         data = self.convert_oneshot(data, "weather")
         # data = self.convert_oneshot(data, "week")
         data = self.convert_oneshot(data, "weekday")
+        # print(f"{data.iloc[0:5]=}")
         # data = self.convert_oneshot(data, "default")
         # data = self.convert_oneshot(data, "job")
         # data = self.convert_oneshot(data, "marital")
@@ -125,7 +144,8 @@ class ProcessedDataset(Dataset):
         # data = self.convert_oneshot(data, "previous_dummy")
         # data = self.convert_oneshot(data, "day_bin")
         # data = self.convert_oneshot(data, "duration_contact")
-        print(f"{data.columns=}")
+        # print(f"{data.columns=}")
+        # print(f"{data[0]=}")
 
         data = data.drop(
             [
@@ -135,12 +155,15 @@ class ProcessedDataset(Dataset):
                 "week",
                 "datetime",
                 "name",
+                # "weather",
                 # "poutcome",
                 # "age_dummy",
                 # "campaign_dummy",
                 # "duration_dummy",
                 # "previous_dummy",
                 # "duration_contact",
+                # "event",
+                # "remarks",
             ],
             axis=1,
         )
@@ -148,6 +171,10 @@ class ProcessedDataset(Dataset):
         #     data = data.drop(columns=["duration_contact_unknown0"])
         # print(f"test_test {data.shape=}, {data[0:]=}")
         # print(f"No.1:{data.columns=}")
+        # print(f"{data.iloc[0:5]=}")
+        # print(f"{data["week_id"]=}")
+        # print(f"{data[0]=}")
+        print(f"Preprocessed data shape: {data.shape=}, {data.columns=}")
         return data.astype(float)
 
     def load(self):
@@ -216,7 +243,7 @@ class ProcessedDataset(Dataset):
         test = self.mypreprocessing(test, onehot_encoder)
         tmp_label = train[self.target_feature]
         train = train.drop([self.target_feature], axis=1)
-        # print(f"{train.shape=}, {test.shape=}, {tmp_label.shape=}")
+        print(f"{train.shape=}, {test.shape=}, {tmp_label.shape=}")
         # print(f"{train=}")
         # print(f"{test=}")
 
@@ -246,6 +273,7 @@ class ProcessedDataset(Dataset):
         # print(f"{self.data=}")
         # print(f"{self.label=}")
 
+        # print(f"Preprocessing dataset: {self.dateset_name}")
         data_to_save = {
             "data": self.data,
             "label": self.label,

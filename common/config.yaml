@@ -140,7 +140,7 @@ model:
     overwrite: true
   mytorch:
     batch_size: 64
-    continue: true
+    continue: false
     display_step: 10
     dropout: 0.25
     epoch: 80
@@ -160,6 +160,22 @@ model:
       weight_decay: 0.002093708354102036
     max_depth: 5
     optimize:
+      sgd:
+        categorical: null
+        int: null
+        const: null
+        float:
+          momentum:
+          - 0.0
+          - 0.99
+          weight_decay:
+          - 1e-6
+          - 1e-2
+          lr:
+          - 1e-04
+          - 1e-01
+
+
       adam:
         categorical:
           amsgrad:
