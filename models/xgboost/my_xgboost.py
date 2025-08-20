@@ -45,6 +45,7 @@ class MyXGBoost(IModel):
         )
         self.old_score = 0.0
         self.is_optimize = self.config.get("is_optimize", False)
+        self.n_estimators = 150
 
         # if "multi" in self.config["objective"]:
         #     self.param = {
@@ -105,7 +106,9 @@ class MyXGBoost(IModel):
             print(f"Validation Score: {score:.4f}")
             return
 
-        self.model = xgb.train(params, xgb_train)
+        if "n_estimators" in params:
+            self.n_estimators = params.pop("n_estimators")
+        self.model = xgb.train(params, xgb_train, num_boost_round=self.n_estimators)
 
         if "multi" in self.config["objective"]:
             y_pred = argmax(self.model.predict(xgb_train), axis=1)

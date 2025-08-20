@@ -114,7 +114,7 @@ class ProcessedDatasetXGBoost(Dataset):
         # print(f"post:{data.columns=}")
 
         # test
-        data = self.convert_onehot_encoder(onehot_encoder, data, "name")
+        # data = self.convert_onehot_encoder(onehot_encoder, data, "name")
 
         data = self.convert_oneshot(data, "event")
         data = self.convert_oneshot(data, "remarks")

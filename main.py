@@ -95,8 +95,8 @@ def get_train_models(models):
     selected_models = []
     names = [
         # "mytorch",
-        "randomforest",
-        "lightgbm",
+        # "randomforest",
+        # "lightgbm",
         "xgboost",
         # "logistic_regression",
         # "knn",
