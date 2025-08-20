@@ -14,6 +14,7 @@ from models.svc.my_svc import MySupportVectorMachine
 from models.logistic_regression.my_logistic_regression import MyLogisticRegression
 from dataset.src.processed_dataset import ProcessedDataset
 from dataset.src.processed_dataset_xgboost import ProcessedDatasetXGBoost
+from sklearn.metrics import root_mean_squared_error
 
 # from dataset.src.processed_dataset_dummies import ProcessedDatasetDummies
 from optimizer.my_optuna import MyOptuna
@@ -43,18 +44,30 @@ def make_models():
     dataset_category_xgboost = copy.deepcopy(dataset_xgboost)
     dataset_category_xgboost.transform_label()
     my_torch = MyTorch
+    base_evaluation = root_mean_squared_error
 
-    mytorch = ["mytorch", dataset, my_torch]
-    random_forest = ["randomforest", dataset_category, MyRandomForest]
-    light_gbm = ["lightgbm", dataset_category_xgboost, MyLightGBM]
-    xgboost = ["xgboost", dataset_category_xgboost, MyXGBoost]
+    mytorch = ["mytorch", dataset, my_torch, base_evaluation]
+    random_forest = [
+        "randomforest",
+        dataset_category,
+        MyRandomForest,
+        base_evaluation,
+    ]
+    light_gbm = [
+        "lightgbm",
+        dataset_category_xgboost,
+        MyLightGBM,
+        base_evaluation,
+    ]
+    xgboost = ["xgboost", dataset_category_xgboost, MyXGBoost, base_evaluation]
     logistic_regression = [
         "logistic_regression",
         dataset_category,
         MyLogisticRegression,
+        base_evaluation,
     ]
-    knn = ["knn", dataset_category, MyKNearestNeighbors]
-    svc = ["svc", dataset_category, MySupportVectorMachine]
+    knn = ["knn", dataset_category, MyKNearestNeighbors, base_evaluation]
+    svc = ["svc", dataset_category, MySupportVectorMachine, base_evaluation]
     models = {
         "mytorch": mytorch,
         "randomforest": random_forest,
@@ -81,12 +94,12 @@ def make_predict_models():
 def get_train_models(models):
     selected_models = []
     names = [
-        "mytorch",
+        # "mytorch",
         "randomforest",
         "lightgbm",
         "xgboost",
-        "logistic_regression",
-        "knn",
+        # "logistic_regression",
+        # "knn",
         # "svc",
     ]
     for name in names:

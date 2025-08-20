@@ -13,7 +13,8 @@ import joblib
 import lightgbm as lgb
 from sklearn import datasets, preprocessing
 from sklearn.metrics import classification_report
-from sklearn.metrics import roc_auc_score
+
+# from sklearn.metrics import roc_auc_score
 from numpy import argmax
 from common.utility import Utility
 import optuna
@@ -21,13 +22,21 @@ import optuna
 
 class MyLightGBM(IModel):
     def __init__(
-        self, config, save_dir, train=None, val=None, test=None, optuna_trial=None
+        self,
+        config,
+        save_dir,
+        train=None,
+        val=None,
+        test=None,
+        evaluation=None,
+        optuna_trial=None,
     ):
         self.model = None
         self.config = config
         self.train_dataset = train
         self.val_dataset = val
         self.test_dataset = test
+        self.evaluation = evaluation
         self.save_dir = save_dir
         self.save_model_path = os.path.join(
             self.save_dir, self.config["model_file_name"]
@@ -77,7 +86,7 @@ class MyLightGBM(IModel):
         if self.model is not None:
             y_pred_proba = self.model.predict(val_data)
             y_pred = y_pred_proba.argmax(axis=1)
-            score = roc_auc_score(val_label, y_pred)
+            score = self.evaluation(val_label, y_pred)
             print("lightgbm Model already exists. Skipping training.")
             print(f"Validation Accuracy: {score:.4f}")
             return
@@ -114,7 +123,7 @@ class MyLightGBM(IModel):
         # print(f"{y_pred.shape=}")
         # print(f"{val_label[0:10]=}")
         # print(f"{y_pred[0:10]=}")
-        score = roc_auc_score(val_label, y_pred_proba)
+        score = self.evaluation(val_label, y_pred_proba)
         print(f"Validation Score: {score:.4f}")
 
         # 最適化のときはここで終了

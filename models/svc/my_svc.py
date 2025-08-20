@@ -23,13 +23,21 @@ from common.utility import Utility
 
 class MySupportVectorMachine(IModel):
     def __init__(
-        self, config, save_dir, train=None, val=None, test=None, optuna_trial=None
+        self,
+        config,
+        save_dir,
+        train=None,
+        val=None,
+        test=None,
+        evaluation=None,
+        optuna_trial=None,
     ):
         self.model = None
         self.config = config
         self.train_dataset = train
         self.val_dataset = val
         self.test_dataset = test
+        self.evaluation = evaluation
         self.save_dir = save_dir
         self.save_model_path = os.path.join(
             self.save_dir, self.config["model_file_name"]
@@ -67,7 +75,7 @@ class MySupportVectorMachine(IModel):
 
         if self.model is not None:
             y_pred_proba = self.model.predict(val_data)
-            score = roc_auc_score(val_label, y_pred_proba)
+            score = self.evaluation(val_label, y_pred_proba)
             print("Suport Vector Machine Model already exists. Skipping training.")
             print(f"Validation Score: {score:.4f}")
             return
@@ -89,7 +97,7 @@ class MySupportVectorMachine(IModel):
 
         # print(f"{y_pred=}")
         # 評価
-        score = roc_auc_score(val_label, y_pred)
+        score = self.evaluation(val_label, y_pred)
         print(f"Suport Vector Machine Validation Score: {score:.4f}")
 
         # 最適化のときはここで終了

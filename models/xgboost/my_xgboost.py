@@ -24,13 +24,21 @@ NUM_WORKERS = 4
 
 class MyXGBoost(IModel):
     def __init__(
-        self, config, save_dir, train=None, val=None, test=None, optuna_trial=None
+        self,
+        config,
+        save_dir,
+        train=None,
+        val=None,
+        test=None,
+        evaluation=None,
+        optuna_trial=None,
     ):
         self.model = None
         self.config = config
         self.train_dataset = train
         self.val_dataset = val
         self.test_dataset = test
+        self.evaluation = evaluation
         self.save_dir = save_dir
         self.save_model_path = os.path.join(
             self.save_dir, self.config["model_file_name"]
@@ -92,7 +100,7 @@ class MyXGBoost(IModel):
                 y_pred = self.model.predict(val_data)
 
             # y_pred = y_pred_proba.argmax(axis=1)
-            score = roc_auc_score(val_label, y_pred)
+            score = self.evaluation(val_label, y_pred)
             print("Xgboost Model already exists. Skipping training.")
             print(f"Validation Score: {score:.4f}")
             return
@@ -105,6 +113,8 @@ class MyXGBoost(IModel):
             # y_proba = self.model.predict(xgb_train)
             # y_pred = (y_proba >= 0.5).astype(int)
             y_pred = self.model.predict(xgb_train)
+        elif "reg:squarederror" in self.config["objective"]:
+            y_pred = self.model.predict(xgb_train)
 
         # 最適化のときはここで終了
         if self.is_optimize:
@@ -112,7 +122,7 @@ class MyXGBoost(IModel):
 
         # predictions = (y_
         # print(f"XGBoost Predictions: {y_proba=}, {y_pred=}, {train_label[:10]=}")
-        score = roc_auc_score(train_label, y_pred)
+        score = self.evaluation(train_label, y_pred)
         print(f"XGBoost Score: {score:.4f}")
         if score > self.old_score:
             data_to_save = {
@@ -135,6 +145,9 @@ class MyXGBoost(IModel):
         if "multi" in self.config["objective"]:
             predictions = argmax(self.model.predict(xgb_forecast), axis=1)
         elif "binary" in self.config["objective"]:
+            predictions = self.model.predict(xgb_forecast)
+            predictions = predictions.reshape(-1, 1)
+        elif "reg:squarederror" in self.config["objective"]:
             predictions = self.model.predict(xgb_forecast)
             predictions = predictions.reshape(-1, 1)
 

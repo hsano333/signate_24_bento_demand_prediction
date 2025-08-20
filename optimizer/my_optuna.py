@@ -37,8 +37,8 @@ class MyOptuna:
     #             "Optimizer requires exactly one dataset and one model to learn."
     #         )
 
-    def add_model(self, name, dataset, model):
-        self.dataset_models[name] = (dataset, model)
+    def add_model(self, name, dataset, model, evaluation):
+        self.dataset_models[name] = (dataset, model, evaluation)
 
     def clear_models(self):
         self.dataset_models.clear()
@@ -74,7 +74,7 @@ class MyOptuna:
         preds = []
         tests = []
 
-        for name, (dataset, model) in self.dataset_models.items():
+        for name, (dataset, model, evaluation) in self.dataset_models.items():
             model_name = name
             model_config = self.config["model"][model_name]
             dataset_name = dataset.get_name()
@@ -85,7 +85,7 @@ class MyOptuna:
             optimized_config_path = (directory / "optimized_param.yaml").as_posix()
             Utility().make_kfold_directory(directory, self.KFoldSplit)
             # eval = BinaryAnalysis().accuracy
-            eval = BinaryAnalysis().auc_score
+            # eval = evaluation
             trnsform_label = BinaryAnalysis().transform_label
 
             if not os.path.isfile(optimized_config_path) or forece_make:
@@ -95,7 +95,7 @@ class MyOptuna:
                     dataset,
                     task,
                     directory,
-                    eval,
+                    evaluation,
                     trnsform_label,
                     self.config,
                 )

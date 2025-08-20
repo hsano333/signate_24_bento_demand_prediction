@@ -38,8 +38,8 @@ class Stacking:
             elif item.is_dir():
                 shutil.rmtree(item)
 
-    def add_model(self, name, dataset, model):
-        self.dataset_models[name] = (dataset, model)
+    def add_model(self, name, dataset, model, evaluation):
+        self.dataset_models[name] = (dataset, model, evaluation)
 
     def clear_models(self):
         self.dataset_models.clear()
@@ -51,7 +51,7 @@ class Stacking:
             )
 
         name = list(self.dataset_models.keys())[0]
-        (dataset, model) = self.dataset_models[name]
+        (dataset, model, evaluation) = self.dataset_models[name]
         model_name = name
         dataset_name = dataset.get_name()
 
@@ -63,9 +63,11 @@ class Stacking:
             directory.mkdir(parents=True, exist_ok=True)
 
         directory.mkdir(parents=True, exist_ok=True)
-        (pred, test) = self.learn_final(model, model_name, dataset, directory)
+        (pred, test) = self.learn_final(
+            model, model_name, dataset, directory, evaluation
+        )
         # ラベルはすべてのデータセットで同じなので、最初のデータセットから取得
-        (_, label, _) = next(iter(self.dataset_models.values()))[0].get_numpy_data()
+        (_, label, _, _) = next(iter(self.dataset_models.values()))[0].get_numpy_data()
         np.savez(file_cv_new_test_path, pred=pred, test=test)
 
         combined_dataset = CombinedDataset(
@@ -92,7 +94,7 @@ class Stacking:
         preds = []
         tests = []
 
-        for name, (dataset, model) in self.dataset_models.items():
+        for name, (dataset, model, evaluation) in self.dataset_models.items():
             model_name = name
             dataset_name = dataset.get_name()
 
@@ -103,7 +105,7 @@ class Stacking:
             if not os.path.isfile(file_cv_trained_path) or forece_make:
                 # directory.mkdir(parents=True, exist_ok=True)
                 (pred, test) = self.make_new_feature(
-                    model, model_name, dataset, task, directory
+                    model, model_name, dataset, task, directory, evaluation
                 )
                 np.savez(file_cv_trained_path, pred=pred, test=test)
                 print("make:" + file_cv_trained_path)
@@ -119,7 +121,7 @@ class Stacking:
         result_pred = np.hstack(preds)
         result_test = np.hstack(tests)
         # ラベルはすべてのデータセットで同じなので、最初のデータセットから取得
-        (_, label, _) = next(iter(self.dataset_models.values()))[0].get_numpy_data()
+        (_, label, _, _) = next(iter(self.dataset_models.values()))[0].get_numpy_data()
         np.savez(file_cv_new_test_path, pred=result_pred, test=result_test)
 
         combined_dataset = CombinedDataset(
@@ -131,7 +133,7 @@ class Stacking:
         preds = []
         tests = []
 
-        for name, (dataset, model) in self.dataset_models.items():
+        for name, (dataset, model, evaluation) in self.dataset_models.items():
             model_name = name
             dataset_name = dataset.get_name()
             (directory, file_cv_trained_path, file_cv_new_test_path) = (
@@ -141,7 +143,7 @@ class Stacking:
             if not os.path.isfile(file_cv_trained_path) or forece_make:
                 directory.mkdir(parents=True, exist_ok=True)
                 (pred, test) = self.make_new_feature(
-                    model, model_name, dataset, task, directory
+                    model, model_name, dataset, task, directory, evaluation
                 )
                 np.savez(file_cv_trained_path, pred=pred, test=test)
                 print("make:" + file_cv_trained_path)
@@ -167,7 +169,7 @@ class Stacking:
         )
         return combined_dataset
 
-    def learn_final(self, model, model_name, dataset, directory):
+    def learn_final(self, model, model_name, dataset, directory, evaluation):
         # kf = self.get_kf(task)
         (data, label, test) = dataset.get_numpy_data()
         label_number = dataset.get_label_number()
@@ -216,7 +218,12 @@ class Stacking:
         model_config["label_number"] = label_num
         model_config["is_optimize"] = False
         new_model = model(
-            model_config, k_directory.as_posix(), new_train, new_val, new_test
+            model_config,
+            k_directory.as_posix(),
+            new_train,
+            new_val,
+            new_test,
+            evaluation,
         )
         params = model_config.get("learned_params", {})
         new_model.learn(0, params)
@@ -250,7 +257,7 @@ class Stacking:
 
         # return (pred_train, preds_test)
 
-    def make_new_feature(self, model, model_name, dataset, task, directory):
+    def make_new_feature(self, model, model_name, dataset, task, directory, evaluation):
         kf = Utility().get_kf(task, self.KFoldSplit, self.RANDAOM_STATE)
         (data, label, test) = dataset.get_numpy_data()
         label_number = dataset.get_label_number()
@@ -295,7 +302,12 @@ class Stacking:
             model_config = self.config["model"][model_name]
             model_config["label_number"] = label_num
             new_model = model(
-                model_config, k_directory.as_posix(), new_train, new_val, new_test
+                model_config,
+                k_directory.as_posix(),
+                new_train,
+                new_val,
+                new_test,
+                evaluation,
             )
             # params = model_config.get("learned_params", {})
             params = new_model.get_model_optimized_params(model_config)
@@ -345,8 +357,8 @@ class Stacking:
         # print(f"{preds_test.shape=}, {len(preds_test)=}")
         # print(f"{preds_test[0:10]=}")
 
-        final_auc = roc_auc_score(y_true_all, y_prob_all)
-        print(f"OOF AUC: {final_auc:.4f}")
+        final_score = evaluation(y_true_all, y_prob_all)
+        print(f"Out of Fold Final Score: {final_score:.4f}")
         return (y_prob_all, y_test_all / self.KFoldSplit)
 
     def fit(self):

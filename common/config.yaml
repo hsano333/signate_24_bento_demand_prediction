@@ -143,7 +143,7 @@ model:
     continue: false
     display_step: 10
     dropout: 0.25
-    epoch: 80
+    epoch: 200
     is_optimize: false
     learned_params:
       amsgrad: true

@@ -93,6 +93,18 @@ class ProcessedDatasetXGBoost(Dataset):
         data["fun"] = data["remarks"].apply(
             lambda x: 1 if x == "お楽しみメニュー" else 0
         )
+        data.loc[data["weather"] == "快晴", "weather"] = "晴れ"
+        data.loc[data["weather"] == "雨", "weather"] = "なし"
+        data.loc[data["weather"] == "雪", "weather"] = "なし"
+        data.loc[data["weather"] == "雷電", "weather"] = "なし"
+
+        data.loc[
+            (
+                (data["remarks"] != "料理長のこだわりメニュー")
+                & (data["remarks"] != "お楽しみメニュー")
+            ),
+            "remarks",
+        ] = "なし"
 
         data["datetime"] = pd.to_datetime(data["datetime"])
         date_df = self.make_date_id()

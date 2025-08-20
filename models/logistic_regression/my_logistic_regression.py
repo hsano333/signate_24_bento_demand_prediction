@@ -15,20 +15,29 @@ import optuna
 from sklearn.linear_model import LogisticRegression
 from sklearn import datasets, preprocessing
 from sklearn.metrics import classification_report
-from sklearn.metrics import roc_auc_score
+
+# from sklearn.metrics import roc_auc_score
 from common.utility import Utility
 from numpy import argmax
 
 
 class MyLogisticRegression(IModel):
     def __init__(
-        self, config, save_dir, train=None, val=None, test=None, optuna_trial=None
+        self,
+        config,
+        save_dir,
+        train=None,
+        val=None,
+        test=None,
+        evaluation=None,
+        optuna_trial=None,
     ):
         self.model = None
         self.config = config
         self.train_dataset = train
         self.val_dataset = val
         self.test_dataset = test
+        self.evaluation = evaluation
         self.save_dir = save_dir
         self.save_model_path = os.path.join(
             self.save_dir, self.config["model_file_name"]
@@ -67,7 +76,7 @@ class MyLogisticRegression(IModel):
 
         if self.model is not None:
             y_pred_proba = self.model.predict_proba(val_data)[:, 1]
-            score = roc_auc_score(val_label, y_pred_proba)
+            score = self.evaluation(val_label, y_pred_proba)
             print("Logistic Regression Model already exists. Skipping training.")
             print(f"Validation Score: {score:.4f}")
             return
@@ -87,7 +96,7 @@ class MyLogisticRegression(IModel):
         y_pred = self.model.predict_proba(val_data)[:, 1]
 
         # 評価
-        score = roc_auc_score(val_label, y_pred)
+        score = self.evaluation(val_label, y_pred)
         print(f"Logistic Regression Validation Score: {score:.4f}")
 
         # 最適化のときはここで終了

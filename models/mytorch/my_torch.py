@@ -45,7 +45,14 @@ DISPLAY_STEP = 10
 
 class MyTorch(IModel):
     def __init__(
-        self, config, save_dir, train=None, val=None, test=None, optuna_trial=None
+        self,
+        config,
+        save_dir,
+        train=None,
+        val=None,
+        test=None,
+        evaluation=None,
+        optuna_trial=None,
     ):
         self.start_epoch = 0
         if train is not None and val is not None:

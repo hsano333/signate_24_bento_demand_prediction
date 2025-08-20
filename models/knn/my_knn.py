@@ -15,20 +15,29 @@ import joblib
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import datasets, preprocessing
 from sklearn.metrics import classification_report
-from sklearn.metrics import roc_auc_score
+
+# from sklearn.metrics import roc_auc_score
 from numpy import argmax
 from common.utility import Utility
 
 
 class MyKNearestNeighbors(IModel):
     def __init__(
-        self, config, save_dir, train=None, val=None, test=None, optuna_trial=None
+        self,
+        config,
+        save_dir,
+        train=None,
+        val=None,
+        test=None,
+        evaluation=None,
+        optuna_trial=None,
     ):
         self.model = None
         self.config = config
         self.train_dataset = train
         self.val_dataset = val
         self.test_dataset = test
+        self.evaluation = evaluation
         self.save_dir = save_dir
         self.save_model_path = os.path.join(
             self.save_dir, self.config["model_file_name"]
@@ -66,7 +75,7 @@ class MyKNearestNeighbors(IModel):
 
         if self.model is not None:
             y_pred_proba = self.model.predict_proba(val_data)[:, 1]
-            score = roc_auc_score(val_label, y_pred_proba)
+            score = self.evaluation(val_label, y_pred_proba)
             print("K Nearest Neighbors Model already exists. Skipping training.")
             print(f"Validation Score: {score:.4f}")
             return
@@ -86,7 +95,7 @@ class MyKNearestNeighbors(IModel):
 
         # 評価
         # print(f"{y_pred=}")
-        score = roc_auc_score(val_label, y_pred)
+        score = self.evaluation(val_label, y_pred)
         print(f"K Nearest Neighbors Validation Score: {score:.4f}")
 
         # 最適化のときはここで終了

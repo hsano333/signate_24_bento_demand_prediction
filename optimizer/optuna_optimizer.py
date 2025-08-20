@@ -8,7 +8,7 @@ import optuna
 
 
 class OptunaOptimizer:
-    def __init__(self, model_info, eval):
+    def __init__(self, model_info, eval, evaluation):
         self.model = model_info.model
         self.model_name = model_info.model_name
         self.dataset = model_info.dataset
@@ -68,6 +68,7 @@ class OptunaOptimizer:
                 new_train,
                 new_val,
                 new_test,
+                self.evaluate,
                 trial,
             )
             params = new_model.get_model_params(trial, self.model_config)
