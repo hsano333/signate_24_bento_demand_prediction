@@ -1,6 +1,7 @@
 from sklearn.model_selection import KFold
 from sklearn.model_selection import TimeSeriesSplit, StratifiedKFold
 from sklearn.metrics import accuracy_score, roc_auc_score
+from models.abstract_model import IModel
 import shutil
 
 from pathlib import Path
@@ -15,20 +16,29 @@ import os
 import yaml
 
 
-class Stacking:
+class Stacking(IModel):
     RANDAOM_STATE = 42
     DefaultDirectory = "making_features"
 
-    def __init__(self, config):
+    def __init__(self, config, task=MLTask.Classification):
         self.config = config
         self.dataset_models = {}
         self.dir_path = Path(__file__).parent.resolve() / self.DefaultDirectory
         self.dir_path.mkdir(parents=True, exist_ok=True)
         self.KFoldSplit = self.config["stacking"]["k_fold"]
         self.RANDAOM_STATE = self.config["stacking"]["random_state"]
+        self.task = task
         # self.model_config = self.config["stacking"]["model_config"]
         # self.ForceMake = self.config["stacking"]["force_make"]
         print(f"{self.KFoldSplit=}, {self.RANDAOM_STATE=}")
+
+    @classmethod
+    def get_name(self):
+        current_dir = Path(__file__).resolve().parent.name
+        return current_dir
+
+    def reload(self):
+        pass
 
     def delete_all_files(self, path):
         print(f"delete_all_files: {path=}")
@@ -44,7 +54,7 @@ class Stacking:
     def clear_models(self):
         self.dataset_models.clear()
 
-    def forecast(self):
+    def forecast(self) -> CombinedDataset:
         if len(self.dataset_models) != 1:
             raise ValueError(
                 "Stacking requires exactly one dataset and one model to learn."
@@ -67,7 +77,7 @@ class Stacking:
             model, model_name, dataset, directory, evaluation
         )
         # ラベルはすべてのデータセットで同じなので、最初のデータセットから取得
-        (_, label, _, _) = next(iter(self.dataset_models.values()))[0].get_numpy_data()
+        (_, label, _) = next(iter(self.dataset_models.values()))[0].get_numpy_data()
         np.savez(file_cv_new_test_path, pred=pred, test=test)
 
         combined_dataset = CombinedDataset(
@@ -90,7 +100,7 @@ class Stacking:
         #     directory.mkdir(parents=True, exist_ok=True)
         return (directory, file_cv_trained_path, file_cv_new_test_path)
 
-    def make_param(self, task=MLTask.Classification, forece_make=False):
+    def make_param(self, forece_make=False):
         preds = []
         tests = []
 
@@ -105,7 +115,7 @@ class Stacking:
             if not os.path.isfile(file_cv_trained_path) or forece_make:
                 # directory.mkdir(parents=True, exist_ok=True)
                 (pred, test) = self.make_new_feature(
-                    model, model_name, dataset, task, directory, evaluation
+                    model, model_name, dataset, directory, evaluation
                 )
                 np.savez(file_cv_trained_path, pred=pred, test=test)
                 print("make:" + file_cv_trained_path)
@@ -121,7 +131,7 @@ class Stacking:
         result_pred = np.hstack(preds)
         result_test = np.hstack(tests)
         # ラベルはすべてのデータセットで同じなので、最初のデータセットから取得
-        (_, label, _, _) = next(iter(self.dataset_models.values()))[0].get_numpy_data()
+        (_, label, _) = next(iter(self.dataset_models.values()))[0].get_numpy_data()
         np.savez(file_cv_new_test_path, pred=result_pred, test=result_test)
 
         combined_dataset = CombinedDataset(
@@ -129,7 +139,10 @@ class Stacking:
         )
         return combined_dataset
 
-    def make_features(self, task=MLTask.Classification, forece_make=False):
+    def learn(self, i, params=None):
+        self.make_features(False)
+
+    def make_features(self, forece_make=False):
         preds = []
         tests = []
 
@@ -143,7 +156,7 @@ class Stacking:
             if not os.path.isfile(file_cv_trained_path) or forece_make:
                 directory.mkdir(parents=True, exist_ok=True)
                 (pred, test) = self.make_new_feature(
-                    model, model_name, dataset, task, directory, evaluation
+                    model, model_name, dataset, directory, evaluation
                 )
                 np.savez(file_cv_trained_path, pred=pred, test=test)
                 print("make:" + file_cv_trained_path)
@@ -257,8 +270,8 @@ class Stacking:
 
         # return (pred_train, preds_test)
 
-    def make_new_feature(self, model, model_name, dataset, task, directory, evaluation):
-        kf = Utility().get_kf(task, self.KFoldSplit, self.RANDAOM_STATE)
+    def make_new_feature(self, model, model_name, dataset, directory, evaluation):
+        kf = Utility().get_kf(self.task, self.KFoldSplit, self.RANDAOM_STATE)
         (data, label, test) = dataset.get_numpy_data()
         label_number = dataset.get_label_number()
 
@@ -373,3 +386,12 @@ class Stacking:
         _, _, test = self.dataset.get_numpy_data()
         predictions = self.model.predict(test)
         return predictions
+
+    def get_model_params(self, trial, model_config):
+        return None
+
+    def get_model_optimized_params(self, model_config):
+        return None
+
+    def check_params(self, params):
+        pass

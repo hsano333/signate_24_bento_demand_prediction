@@ -44,8 +44,8 @@ class MyOptuna:
         self.dataset_models.clear()
 
     # def optimize(self, model, model_name, dataset, task, directory, config):
-    def optimize(self, model_info, eval):
-        opt = OptunaOptimizer(model_info, eval)
+    def optimize(self, model_info, eval, evaluation):
+        opt = OptunaOptimizer(model_info, eval, evaluation)
         # pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10)
         # デフォルトのまま
         pruner = optuna.pruners.MedianPruner()
@@ -103,7 +103,7 @@ class MyOptuna:
                 # (pred, test) = self.make_new_feature(
                 #     model, model_name, dataset, task, directory
                 # )
-                optimized_data = self.optimize(model_info, eval)
+                optimized_data = self.optimize(model_info, eval, evaluation)
                 with open(optimized_config_path, mode="w", encoding="utf-8") as f:
                     yaml.safe_dump(optimized_data, f)
                 self.config["model"][model_name] = optimized_data

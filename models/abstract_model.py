@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataset.src.combined_dataset import CombinedDataset
 
 
 class IModel(ABC):
@@ -15,7 +16,7 @@ class IModel(ABC):
         pass
 
     @abstractmethod
-    def forecast(self, data):
+    def forecast(self, data) -> CombinedDataset:
         pass
 
     @abstractmethod

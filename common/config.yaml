@@ -160,22 +160,6 @@ model:
       weight_decay: 0.002093708354102036
     max_depth: 5
     optimize:
-      sgd:
-        categorical: null
-        int: null
-        const: null
-        float:
-          momentum:
-          - 0.0
-          - 0.99
-          weight_decay:
-          - 1e-6
-          - 1e-2
-          lr:
-          - 1e-04
-          - 1e-01
-
-
       adam:
         categorical:
           amsgrad:
@@ -211,6 +195,20 @@ model:
           - 0.1
           - 100
           - true
+      sgd:
+        categorical: null
+        const: null
+        float:
+          lr:
+          - 1e-04
+          - 1e-01
+          momentum:
+          - 0.0
+          - 0.99
+          weight_decay:
+          - 1e-6
+          - 1e-2
+        int: null
       torch:
         categorical:
           batch_size:
@@ -244,14 +242,14 @@ model:
     objective: multiclass
     optimize:
       categorical:
-        max_features:
-        - sqrt
-        - log2
-        - null
         criterion:
         - gini
         - entropy
         - log_loss
+        max_features:
+        - sqrt
+        - log2
+        - null
       const:
         random_state: 42
       int:
@@ -412,19 +410,19 @@ model:
     is_optimize: false
     learned_params:
       booster: gbtree
-      colsample_bytree: 0.9383798526312513
+      colsample_bytree: 0.6218283665876922
       eval_metric: rmse
-      gamma: 1.5099799110488026
-      learning_rate: 0.3843502157759784
-      max_depth: 7
-      min_child_weight: 18
-      n_estimators: 1164
+      gamma: 1.2887619111692377
+      learning_rate: 0.05539580581133643
+      max_depth: 3
+      min_child_weight: 2
+      n_estimators: 170
       objective: reg:squarederror
-      reg_alpha: 3.4273788910141403
-      reg_lambda: 4.9007387772677955
+      reg_alpha: 3.605531073778554
+      reg_lambda: 3.0689364105583907
       scale_pos_weight: 7.5
-      subsample: 0.913244330575963
-      tree_method: auto
+      subsample: 0.45414956013156005
+      tree_method: exact
     model_file_name: model_and_accuracy.pkl
     objective: reg:squarederror
     optimize:

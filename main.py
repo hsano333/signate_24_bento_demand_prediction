@@ -1,6 +1,5 @@
 import my_ml
 import sys
-from ensemble.stacking import Stacking
 from models.mytorch.my_torch import MyTorch
 from pathlib import Path
 import yaml
@@ -25,6 +24,7 @@ import copy
 
 args = sys.argv
 config = Utility().load_yaml_config()
+BaseEvaluation = root_mean_squared_error
 
 
 def make_models():
@@ -44,30 +44,29 @@ def make_models():
     dataset_category_xgboost = copy.deepcopy(dataset_xgboost)
     dataset_category_xgboost.transform_label()
     my_torch = MyTorch
-    base_evaluation = root_mean_squared_error
 
-    mytorch = ["mytorch", dataset, my_torch, base_evaluation]
+    mytorch = ["mytorch", dataset, my_torch, BaseEvaluation]
     random_forest = [
         "randomforest",
         dataset_category,
         MyRandomForest,
-        base_evaluation,
+        BaseEvaluation,
     ]
     light_gbm = [
         "lightgbm",
         dataset_category_xgboost,
         MyLightGBM,
-        base_evaluation,
+        BaseEvaluation,
     ]
-    xgboost = ["xgboost", dataset_category_xgboost, MyXGBoost, base_evaluation]
+    xgboost = ["xgboost", dataset_category_xgboost, MyXGBoost, BaseEvaluation]
     logistic_regression = [
         "logistic_regression",
         dataset_category,
         MyLogisticRegression,
-        base_evaluation,
+        BaseEvaluation,
     ]
-    knn = ["knn", dataset_category, MyKNearestNeighbors, base_evaluation]
-    svc = ["svc", dataset_category, MySupportVectorMachine, base_evaluation]
+    knn = ["knn", dataset_category, MyKNearestNeighbors, BaseEvaluation]
+    svc = ["svc", dataset_category, MySupportVectorMachine, BaseEvaluation]
     models = {
         "mytorch": mytorch,
         "randomforest": random_forest,
@@ -82,8 +81,13 @@ def make_models():
 
 
 def make_predict_models():
-    logistic_regression = ["result_logistic_regression", None, MyLogisticRegression]
-    xgboost = ["result_xgboost", None, MyXGBoost]
+    logistic_regression = [
+        "result_logistic_regression",
+        None,
+        MyLogisticRegression,
+        BaseEvaluation,
+    ]
+    xgboost = ["result_xgboost", None, MyXGBoost, BaseEvaluation]
     models = {
         "xgboost": xgboost,
         "logistic_regression": logistic_regression,
@@ -126,7 +130,7 @@ def main():
     elif args[1] == "optimize_predict":
         my_ml.optimize_predict(train_models, predict_model)
     elif args[1] == "predict":
-        my_ml.predict(train_models, predict_model)
+        my_ml.predict(train_models, predict_model, BaseEvaluation)
     else:
         print(
             "Invalid argument. Use 'optimize', 'optimize_result', 'train', or 'predict'."
