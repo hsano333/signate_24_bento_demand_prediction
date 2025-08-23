@@ -338,7 +338,7 @@ model:
         tree_method:
         - auto
         - exact
-        - gpu_hist
+        - hist
       const:
         eval_metric: rmse
         objective: binary:logistic
@@ -409,19 +409,19 @@ model:
     eval_metric: rmse
     is_optimize: false
     learned_params:
-      booster: gbtree
-      colsample_bytree: 0.6218283665876922
+      booster: dart
+      colsample_bytree: 0.5616300496257403
       eval_metric: rmse
-      gamma: 1.2887619111692377
-      learning_rate: 0.05539580581133643
-      max_depth: 3
-      min_child_weight: 2
-      n_estimators: 170
+      gamma: 3.1343475361199413
+      learning_rate: 0.1637058441562192
+      max_depth: 4
+      min_child_weight: 9
+      n_estimators: 239
       objective: reg:squarederror
-      reg_alpha: 3.605531073778554
-      reg_lambda: 3.0689364105583907
+      reg_alpha: 7.467993237579663
+      reg_lambda: 3.123027978913534
       scale_pos_weight: 7.5
-      subsample: 0.45414956013156005
+      subsample: 0.8261147221797639
       tree_method: exact
     model_file_name: model_and_accuracy.pkl
     objective: reg:squarederror
@@ -434,7 +434,7 @@ model:
         tree_method:
         - auto
         - exact
-        - gpu_hist
+        - hist
       const:
         eval_metric: rmse
         objective: reg:squarederror
@@ -484,7 +484,7 @@ model:
     overwrite: true
     subsample: 0.8
 optimization:
-  n_trials: 150
+  n_trials: 30
 optimize: null
 original_dataset:
   overwrite: true
