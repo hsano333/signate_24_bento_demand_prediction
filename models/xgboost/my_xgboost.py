@@ -157,7 +157,12 @@ class MyXGBoost(IModel):
         return torch.tensor(predictions.astype(np.float32))
 
     def get_model_params(self, trial, model_config):
-        return Utility().get_model_params(trial, model_config)
+        params = Utility().get_model_params(trial, model_config)
+        # histの計算をCUDA(GPU)で行うが、実際やるとCPUより遅かった。
+        # データサイズが小さいのが原因？
+        # if params.get("tree_method") == "hist":
+        #     params["device"] = "cuda"
+        return params
 
     def get_model_optimized_params(self, model_config):
         return model_config.get("learned_params", {})

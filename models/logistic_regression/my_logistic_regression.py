@@ -210,8 +210,6 @@ class MyLogisticRegression(IModel):
 
     def get_model_params(self, trial, model_config):
         params = Utility().get_model_params(trial, model_config)
-        if params.get("tree_method") == "hist":
-            params["device"] = "cuda"
         return params
         # if params["penalty"] == "none":
         #     params["penalty"] = None

@@ -409,20 +409,20 @@ model:
     eval_metric: rmse
     is_optimize: false
     learned_params:
-      booster: dart
-      colsample_bytree: 0.5616300496257403
+      booster: gbtree
+      colsample_bytree: 0.5915651544596063
       eval_metric: rmse
-      gamma: 3.1343475361199413
-      learning_rate: 0.1637058441562192
-      max_depth: 4
+      gamma: 3.477659531832659
+      learning_rate: 0.017600176237053115
+      max_depth: 3
       min_child_weight: 9
-      n_estimators: 239
+      n_estimators: 682
       objective: reg:squarederror
-      reg_alpha: 7.467993237579663
-      reg_lambda: 3.123027978913534
+      reg_alpha: 7.233486650917856
+      reg_lambda: 7.681043129781626
       scale_pos_weight: 7.5
-      subsample: 0.8261147221797639
-      tree_method: exact
+      subsample: 0.8249703514083832
+      tree_method: hist
     model_file_name: model_and_accuracy.pkl
     objective: reg:squarederror
     optimize:
