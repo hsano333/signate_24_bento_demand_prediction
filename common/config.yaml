@@ -321,7 +321,7 @@ model:
       learning_rate: 0.28446474741755745
       max_depth: 12
       min_child_weight: 20
-      n_estimators: 1763
+      n_estimators: 7
       objective: binary:logistic
       reg_alpha: 0.8265186899244789
       reg_lambda: 0.9917749807057756

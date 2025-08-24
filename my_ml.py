@@ -61,7 +61,9 @@ def train(ensemble, models):
     # ensemble = Stacking(config, MLTask.Classification)
     for model in models:
         ensemble.add_model(*model)
-    result_dataset = ensemble.make_features(forece_make=True)
+    params = {"forece_make": True}
+    ensemble.learn(0, params)
+    # result_dataset = ensemble.make_features(forece_make=True)
 
 
 def predict(ensemble, train_models, predict_model, evaluation):
@@ -86,13 +88,13 @@ def predict(ensemble, train_models, predict_model, evaluation):
 
     # threshold = config["model"][predict_model[0]]["threshold"]
 
-    final_result = ensemble.forecast_and_get_data()
-    pred_data = final_result.get_numpy_data()[0]
-    label = final_result.get_numpy_data()[1]
-    test_data = final_result.get_numpy_data()[2]
-
-    train_score = evaluation(label, pred_data)
-    print(f"Train Result Score: {train_score:.4f}")
+    # final_result = ensemble.forecast_and_get_data()
+    test_data = ensemble.forecast()
+    # pred_data = final_result.get_numpy_data()[0]
+    # label = final_result.get_numpy_data()[1]
+    # test_data = final_result.get_numpy_data()[2]
+    #
+    # train_score = evaluation(label, pred_data)
 
     # acc_max = 0.0
     #
@@ -119,5 +121,5 @@ def predict(ensemble, train_models, predict_model, evaluation):
     df = pd.DataFrame({"id": id, "activity": test_data.reshape(-1)})
     df.to_csv("submission.tsv", index=False, header=False, sep="\t")
 
-    df2 = pd.DataFrame({"activity": pred_data.reshape(-1)})
-    df2.to_csv("submission_pred.tsv", index=False, header=False, sep="\t")
+    # df2 = pd.DataFrame({"activity": pred_data.reshape(-1)})
+    # df2.to_csv("submission_pred.tsv", index=False, header=False, sep="\t")

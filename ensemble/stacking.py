@@ -18,13 +18,12 @@ import yaml
 
 
 class Stacking(IModel):
-    RANDAOM_STATE = 42
     DefaultDirectory = "stacking_making_features"
 
-    def __init__(self, config, evaluation, task=MLTask.Classification):
+    def __init__(self, config, task=MLTask.Classification):
         self.name = self.get_name()
         self.config = config
-        self.dataset_models = {}
+        # self.dataset_models = {}
         self.dir_path = Path(__file__).parent.resolve() / self.DefaultDirectory
         # self.dir_path.mkdir(parents=True, exist_ok=True)
         self.KFoldSplit = self.config["stacking"]["k_fold"]
@@ -67,7 +66,8 @@ class Stacking(IModel):
         label = final_result.get_numpy_data()[1]
         test_data = final_result.get_numpy_data()[2]
 
-        # train_score = self.evaluation(label, pred_data)
+        train_score = self.evaluation(label, pred_data)
+        print(f"Train Result Score: {train_score:.4f}")
         return test_data
 
     # def make_param(self, forece_make=False):
@@ -116,7 +116,8 @@ class Stacking(IModel):
     #     return combined_dataset
 
     def learn(self, i, params=None):
-        self.oof.make_features(False)
+        force_make = params.get("forece_make", False) if params else False
+        self.oof.make_features(force_make)
 
     def make_features(self, forece_make=False):
         return self.oof.make_features(forece_make)
@@ -281,22 +282,3 @@ class Stacking(IModel):
         # print(f"{preds_test[-1].shape=}, {len(preds_test)=}, {preds_test[0:10]=}")
         #######################################################
         return (pred, pred_test)
-
-        # va_idxes = np.concatenate(va_idxes)
-        # preds = np.concatenate(preds, axis=0)
-        # order = np.argsort(va_idxes)
-        # pred_train = preds[order]
-        # print(
-        #     f"{preds.shape=}, {va_idxes.shape=}, {len(preds)=}, {pred_train.shape=}, {preds_test[-1].shape=}, {len(preds_test)=}"
-        # )
-        # print(f"{pred_train[0:10]=}")
-        # print(f"{preds_test[0][0:10]=}")
-        # print(f"{preds_test[1][0:10]=}")
-        # print(f"{preds_test[2][0:10]=}")
-        # print(f"{preds_test[3][0:10]=}")
-        # print(f"{preds_test[4][0:10]=}")
-        # preds_test = np.mean(preds_test, axis=0)
-        # print(f"{preds_test.shape=}, {len(preds_test)=}")
-        # print(f"{preds_test[0:10]=}")
-
-        # return (pred_train, preds_test)

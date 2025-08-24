@@ -22,6 +22,7 @@ class OOF:
         self.KFoldSplit = self.config["stacking"]["k_fold"]
         self.RANDAOM_STATE = self.config["stacking"]["random_state"]
         self.task = task
+        self.scores = {}
 
     def add_model(self, name, dataset, model, evaluation):
         # 最後はwegit
@@ -33,6 +34,7 @@ class OOF:
     def make_features(self, forece_make=False):
         preds = []
         tests = []
+        # self.scores = np.zeros(len(self.dataset_models))
 
         i = -1
         for name, (dataset, model, evaluation, _) in self.dataset_models.items():
@@ -58,6 +60,8 @@ class OOF:
 
             preds.append(pred.reshape(-1, 1))
             tests.append(test.reshape(-1, 1))
+            label = dataset.get_numpy_data()[1]
+            self.scores[name] = evaluation(label, pred.reshape(-1, 1))
 
         result_pred = np.hstack(preds)
         result_test = np.hstack(tests)

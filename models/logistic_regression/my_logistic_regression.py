@@ -89,8 +89,8 @@ class MyLogisticRegression(IModel):
             # n_estimators=self.n_estimators,
         )
         # print(f"{params=}")
-        print(f"{train_data.shape=}, {train_label.shape=}")
-        print(f"{train_data[0]=}, {train_label[0]=}")
+        # print(f"{train_data.shape=}, {train_label.shape=}")
+        # print(f"{train_data[0]=}, {train_label[0]=}")
         self.model = logistic.fit(train_data, train_label)
 
         y_pred = self.model.predict_proba(val_data)[:, 1]
@@ -169,39 +169,40 @@ class MyLogisticRegression(IModel):
     ### Optunaのパラメータで、エラーになるパラメーターを変更する
     def transform_params(self, trial, params):
         # print(f"pre:{params=}")
-        params["penalty"] = trial.suggest_categorical("penalty", ["l1", "l2"])
-        # if (
-        #     params["solver"] == "lbfgs"
-        #     or params["solver"] == "newton-cg"
-        #     or params["solver"] == "newton-cholesky"
-        #     or params["solver"] == "sag"
-        # ):
-        #     # params["penalty"] = trial.suggest_categorical("penalty", ["l2", "none"])
-        #     params["penalty"] = trial.suggest_categorical("penalty", ["l2"])
-        # elif params["solver"] == "liblinear":
-        #     params["penalty"] = trial.suggest_categorical("penalty", ["l1", "l2"])
-        # elif params["solver"] == "saga":
-        #     params["penalty"] = trial.suggest_categorical(
-        #         "penalty", ["l1", "l2", "elasticnet"]
-        #     )
-        #
-        # if params["penalty"] == "l1" and params["solver"] in [
-        #     "lbfgs",
-        #     "newton-cg",
-        #     "newton-cholesky",
-        #     "sag",
-        # ]:
-        #     params["solver"] = trial.suggest_categorical(
-        #         "solver", ["liblinear", "saga"]
-        #     )
-        # if params["penalty"] == "none" and params["solver"] == "liblinear":
-        #     params["solver"] = trial.suggest_categorical(
-        #         "solver", ["lbfgs", "newton-cg", "newton-cholesky", "sag", "saga"]
-        #     )
-        # if params["penalty"] == "elasticnet":
-        #     params["solver"] = "saga"
-        # else:
-        #     params["l1_ratio"] = None
+        # params["penalty"] = trial.suggest_categorical("penalty", ["l1", "l2"])
+        if (
+            params["solver"] == "lbfgs"
+            or params["solver"] == "newton-cg"
+            or params["solver"] == "newton-cholesky"
+            or params["solver"] == "sag"
+        ):
+            # params["penalty"] = trial.suggest_categorical("penalty", ["l2", "none"])
+            params["penalty"] = trial.suggest_categorical("penalty", ["l2"])
+        elif params["solver"] == "liblinear":
+            params["penalty"] = trial.suggest_categorical("penalty", ["l1", "l2"])
+        elif params["solver"] == "saga":
+            params["penalty"] = trial.suggest_categorical(
+                "penalty", ["l1", "l2", "elasticnet"]
+            )
+
+        if params["penalty"] == "l1" and params["solver"] in [
+            "lbfgs",
+            "newton-cg",
+            "newton-cholesky",
+            "sag",
+        ]:
+            params["solver"] = trial.suggest_categorical(
+                "solver", ["liblinear", "saga"]
+            )
+        if params["penalty"] == "none" and params["solver"] == "liblinear":
+            params["solver"] = trial.suggest_categorical(
+                "solver", ["lbfgs", "newton-cg", "newton-cholesky", "sag", "saga"]
+            )
+        if params["penalty"] == "elasticnet":
+            params["solver"] = "saga"
+        else:
+            params["l1_ratio"] = None
+            # params.pop("l1_ratio", None)
 
         # if params["class_weight"] == "balanced":
         # print(f"post:{params=}")

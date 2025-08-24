@@ -2,6 +2,7 @@ import my_ml
 import sys
 from models.mytorch.my_torch import MyTorch
 from ensemble.stacking import Stacking
+from ensemble.blending import Blending
 from pathlib import Path
 import yaml
 from common.utility import Utility
@@ -104,7 +105,7 @@ def get_train_models(models):
         # "randomforest",
         # "lightgbm",
         "xgboost",
-        "logistic_regression",
+        #"logistic_regression",
         # "knn",
         # "svc",
     ]
@@ -124,7 +125,8 @@ def main():
     predict_models = make_predict_models()
     train_models = get_train_models(train_models)
     predict_model = get_predict_model(predict_models)
-    ensemble = Stacking(config, MLTask.Classification)
+    # ensemble = Stacking(config, MLTask.Classification)
+    ensemble = Blending(config, MLTask.Classification, False)
 
     if args[1] == "optimize":
         my_ml.optimize(train_models)
