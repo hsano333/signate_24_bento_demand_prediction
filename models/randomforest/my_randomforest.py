@@ -115,10 +115,10 @@ class MyRandomForest(IModel):
         return torch.tensor(y_pred_proba.astype(np.float32))
 
     def get_model_params(self, trial, model_config):
-        return Utility().get_model_params(trial, model_config)
+        pass
 
     def get_model_optimized_params(self, model_config):
-        return model_config.get("learned_params", {})
+        pass
 
     def check_params(self, params):
         pass

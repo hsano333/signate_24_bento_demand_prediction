@@ -33,11 +33,11 @@ def optimize(models):
     optimizer.optimize_models(MLTask.Classification, True)
 
 
-def optimize_predict(train_models, predict_model):
+def optimize_predict(ensemble, train_models, predict_model):
     dataset = ProcessedDataset(config["original_dataset"], "titanic")
     dataset.load()
 
-    ensemble = Stacking(config, MLTask.Classification)
+    # ensemble = Stacking(config, MLTask.Classification)
     for model in train_models:
         ensemble.add_model(*model)
 
@@ -50,27 +50,28 @@ def optimize_predict(train_models, predict_model):
     optimizer.add_model(*predict_model)
     optimizer.optimize_models(MLTask.Classification, True)
 
-    ensemble = Stacking(config, MLTask.Classification)
+    ensemble.clear_models()
+    # ensemble = Stacking(config, MLTask.Classification)
     predict_model[1] = result_dataset
     ensemble.add_model(*predict_model)
     result_dataset = ensemble.make_features(forece_make=False)
 
 
-def train(models):
-    ensemble = Stacking(config, MLTask.Classification)
+def train(ensemble, models):
+    # ensemble = Stacking(config, MLTask.Classification)
     for model in models:
         ensemble.add_model(*model)
     result_dataset = ensemble.make_features(forece_make=True)
 
 
-def predict(train_models, predict_model, evaluation):
+def predict(ensemble, train_models, predict_model, evaluation):
     dataset = ProcessedDataset(config["original_dataset"], "titanic")
     dataset.load()
 
-    ensemble = Stacking(
-        config,
-        MLTask.Classification,
-    )
+    # ensemble = Stacking(
+    #     config,
+    #     MLTask.Classification,
+    # )
     for model in train_models:
         ensemble.add_model(*model)
 
@@ -85,7 +86,7 @@ def predict(train_models, predict_model, evaluation):
 
     # threshold = config["model"][predict_model[0]]["threshold"]
 
-    final_result = ensemble.forecast()
+    final_result = ensemble.forecast_and_get_data()
     pred_data = final_result.get_numpy_data()[0]
     label = final_result.get_numpy_data()[1]
     test_data = final_result.get_numpy_data()[2]
@@ -110,8 +111,7 @@ def predict(train_models, predict_model, evaluation):
     # print(f"Best threshold: {threshold}, Accuracy: {acc_max}")
 
     # threshold = 0.5
-    # test_data[test_data < threshold] = 0
-    # test_data[test_data >= threshold] = 1
+    # test_data[test_data < threshold] = 0 test_data[test_data >= threshold] = 1
     # test_data_bool = (test_data >= threshold).astype(int).reshape(-1)
     # forecast = label_encoder.inverse_transform(test_data_bool.astype(int))
 

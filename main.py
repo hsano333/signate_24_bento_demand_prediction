@@ -1,6 +1,7 @@
 import my_ml
 import sys
 from models.mytorch.my_torch import MyTorch
+from ensemble.stacking import Stacking
 from pathlib import Path
 import yaml
 from common.utility import Utility
@@ -24,6 +25,7 @@ import copy
 
 args = sys.argv
 config = Utility().load_yaml_config()
+task = MLTask.Classification
 BaseEvaluation = root_mean_squared_error
 
 
@@ -102,7 +104,7 @@ def get_train_models(models):
         # "randomforest",
         # "lightgbm",
         "xgboost",
-        # "logistic_regression",
+        "logistic_regression",
         # "knn",
         # "svc",
     ]
@@ -122,18 +124,19 @@ def main():
     predict_models = make_predict_models()
     train_models = get_train_models(train_models)
     predict_model = get_predict_model(predict_models)
+    ensemble = Stacking(config, MLTask.Classification)
 
     if args[1] == "optimize":
         my_ml.optimize(train_models)
     elif args[1] == "train":
-        my_ml.train(train_models)
+        my_ml.train(ensemble, train_models)
     elif args[1] == "optimize_predict":
-        my_ml.optimize_predict(train_models, predict_model)
+        my_ml.optimize_predict(ensemble, train_models, predict_model)
     elif args[1] == "predict":
-        my_ml.predict(train_models, predict_model, BaseEvaluation)
+        my_ml.predict(ensemble, train_models, predict_model, BaseEvaluation)
     else:
         print(
-            "Invalid argument. Use 'optimize', 'optimize_result', 'train', or 'predict'."
+            "Invalid argument. Use 'optimize', 'optimize_predict', 'train', or 'predict'."
         )
         sys.exit(1)
 

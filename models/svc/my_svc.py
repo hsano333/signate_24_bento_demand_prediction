@@ -120,7 +120,6 @@ class MySupportVectorMachine(IModel):
             )
 
     def forecast(self, data):
-        # y_pred_proba = self.model.predict(data.numpy())
         y_pred_proba = self.model.predict(data.numpy())
         return torch.tensor(y_pred_proba.astype(np.float32))
 
