@@ -109,49 +109,12 @@ class Blending(IModel):
         self.oof.dataset_models.clear()
 
     def forecast(self):
-        preds = []
-        tests = []
-        scores = np.zeros(len(self.oof.dataset_models))
-
-        i = -1
-        for name, (dataset, model, evaluation) in self.oof.dataset_models.items():
-            i = i + 1
-            model_name = name
-            dataset_name = dataset.get_name()
-            (directory, file_cv_trained_path, file_cv_new_test_path) = (
-                self.make_directory(dataset_name, model_name)
-            )
-
-            if not os.path.isfile(file_cv_trained_path):
-                directory.mkdir(parents=True, exist_ok=True)
-                (pred, test) = self.make_new_feature(
-                    model, model_name, dataset, directory, evaluation
-                )
-                np.savez(file_cv_trained_path, pred=pred, test=test)
-                print("make:" + file_cv_trained_path)
-            else:
-                data = np.load(file_cv_trained_path)
-                pred = data["pred"]
-                test = data["test"]
-                print("load:" + file_cv_trained_path)
-
-            preds.append(pred.reshape(-1, 1))
-            tests.append(test.reshape(-1, 1))
-
-            label = dataset.get_numpy_data()[1]
-            # scores[i] = evaluation(label, pred.reshape(-1, 1))
-            self.oof.dataset_models[name][4] = evaluation(label, pred.reshape(-1, 1))
-
-        result_pred = np.hstack(preds)
-        result_test = np.hstack(tests)
-        self.self.calc_weight()
-        score = self.calc_score()
+        combined_dataset = self.oof.make_features(False)
+        self.calc_weight(self.oof.scores)
+        score = self.calc_score(self.oof.scores)
         print(f"Blending Score: {score:.4f}")
+        result_test = combined_dataset.get_numpy_data()[2]
 
-        # ラベルはすべてのデータセットで同じなので、最初のデータセットから取得
-        (_, label, _) = next(iter(self.oof.dataset_models.values()))[0].get_numpy_data()
-        np.savez(file_cv_new_test_path, pred=result_pred, test=result_test)
-        print(f"Blending Model saved to {file_cv_new_test_path}")
         return result_test
 
     def get_model_params(self, trial, model_config):

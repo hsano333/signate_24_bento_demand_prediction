@@ -14,6 +14,7 @@ from models.knn.my_knn import MyKNearestNeighbors
 from models.svc.my_svc import MySupportVectorMachine
 from models.logistic_regression.my_logistic_regression import MyLogisticRegression
 from dataset.src.processed_dataset import ProcessedDataset
+from dataset.src.time_dataset import TimeDataset
 from dataset.src.processed_dataset_xgboost import ProcessedDatasetXGBoost
 from sklearn.metrics import root_mean_squared_error
 
@@ -31,8 +32,11 @@ BaseEvaluation = root_mean_squared_error
 
 
 def make_models():
+    time_dataset = TimeDataset(config["original_dataset"], "time_bento")
+    time_dataset.load()
     dataset = ProcessedDataset(config["original_dataset"], "bento")
     dataset.load()
+
     dataset_xgboost = ProcessedDatasetXGBoost(
         config["xgboost_dataset"], "xgboost_titani"
     )
@@ -105,7 +109,7 @@ def get_train_models(models):
         # "randomforest",
         # "lightgbm",
         "xgboost",
-        #"logistic_regression",
+        # "logistic_regression",
         # "knn",
         # "svc",
     ]

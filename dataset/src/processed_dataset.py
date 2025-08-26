@@ -4,6 +4,7 @@ from sklearn import preprocessing
 from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import KNNImputer
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.linear_model import LinearRegression
 import joblib
 
 import torch
@@ -82,14 +83,38 @@ class ProcessedDataset(Dataset):
 
         return df
 
-    def mypreprocessing(self, data, onehot_encoder):
+    def get_mean_y(self, data, onehot_encoder):
+        # print(f"Preprocessed data shape: {data.shape=}, {data.columns=}")
+        # data["mean_y"] = data.groupby("week_id")["y"].transform("mean")
+        def trimmed_mean(x):
+            if len(x) >= 3:
+                return x.sort_values().iloc[1:-1].mean()
+            else:
+                return x.mean()  # データ数が2以下なら普通に平均
+
+        # print(f"Preprocessed data shape: {data.shape=}, {data.columns=}")
+        mean_y = data.groupby("week_id")["y"].agg(trimmed_mean).reset_index()
+        print(f"{data.shape=}, {data.columns=}, {mean_y=}")
+        tmp_label = mean_y["y"]
+        tmp_data = mean_y["week_id"]
+        # print(f"{label=}, {data=}")
+
+        liner = LinearRegression()
+        print(f"{tmp_data.shape=}, {tmp_label.shape=}")
+        self.model = liner.fit(np.array(tmp_data).reshape(-1, 1), tmp_label)
+
+        return self.model
+
+    def mypreprocessing(self, data, onehot_encoder, time_liner_model):
+        # return data[["y", "week_id"]]
+
         data["payday"] = data["payday"].fillna(0)
         data["event"] = data["event"].fillna("なし")
         data["remarks"] = data["remarks"].fillna("なし")
         data["precipitation"] = data["precipitation"].apply(
             lambda x: -1 if x == "--" else float(x)
         )
-        data["month"] = data["datetime"].apply(lambda x: int(x.split("-")[1]))
+        # data["month"] = data["datetime"].apply(lambda x: int(x.split("-")[1]))
         data["curry"] = data["name"].apply(lambda x: 1 if x.find("カレー") >= 0 else 0)
         data["fun"] = data["remarks"].apply(
             lambda x: 1 if x == "お楽しみメニュー" else 0
@@ -108,12 +133,12 @@ class ProcessedDataset(Dataset):
         ] = "なし"
 
         data["datetime"] = pd.to_datetime(data["datetime"])
-        date_df = self.make_date_id()
+        # date_df = self.make_date_id()
 
         # print(f"pre:{data.columns=}")
         # print(f"{data=}")
         # print(f"{date_df=}")
-        data = pd.merge(data, date_df, on="datetime", how="left")
+        # data = pd.merge(data, date_df, on="datetime", how="left")
         # print(f"No.1:{data["week_id"]=}")
         # # print(f"post:{data.columns=}")
         print(f"{data["weather"].drop_duplicates()=}")
@@ -126,6 +151,8 @@ class ProcessedDataset(Dataset):
         data = self.convert_oneshot(data, "remarks")
         data = self.convert_oneshot(data, "weather")
         # data = self.convert_oneshot(data, "week")
+        print(f"{data.columns=}")
+        # print(f"{data['weekday']=}")
         data = self.convert_oneshot(data, "weekday")
         # print(f"{data.iloc[0:5]=}")
         # data = self.convert_oneshot(data, "default")
@@ -150,11 +177,13 @@ class ProcessedDataset(Dataset):
         data = data.drop(
             [
                 # "id",
+                "week_id",
                 "kcal",
                 "temperature",
                 "week",
                 "datetime",
                 "name",
+                # "y_avg",
                 # "weather",
                 # "poutcome",
                 # "age_dummy",
@@ -239,8 +268,23 @@ class ProcessedDataset(Dataset):
         # train["daday_bin"] = pd.cut(train["y_true_ratio"], bins=6, labels=False)
         # train = train.drop(columns=["y_true_ratio"])
 
-        train = self.mypreprocessing(train, onehot_encoder)
-        test = self.mypreprocessing(test, onehot_encoder)
+        train["datetime"] = pd.to_datetime(train["datetime"])
+        test["datetime"] = pd.to_datetime(test["datetime"])
+        date_df = self.make_date_id()
+        train = pd.merge(train, date_df, on="datetime", how="left")
+        test = pd.merge(test, date_df, on="datetime", how="left")
+
+        # print(f"{train.shape=}, {test.shape=}")
+        time_liner_model = self.get_mean_y(train, onehot_encoder)
+        # print(f"{train.shape=}, {test.shape=}")
+        train["y_avg"] = time_liner_model.predict(train[["week_id"]])
+        train["y"] = train["y"] - train["y_avg"]
+        train = train.drop(columns=["y_avg"])
+
+        print(f"pre:{train.shape=}, {test.shape=},{train.columns=}")
+        train = self.mypreprocessing(train, onehot_encoder, time_liner_model)
+        print(f"post:{train.shape=}, {test.shape=},{train.columns=}")
+        test = self.mypreprocessing(test, onehot_encoder, time_liner_model)
         tmp_label = train[self.target_feature]
         train = train.drop([self.target_feature], axis=1)
         print(f"{train.shape=}, {test.shape=}, {tmp_label.shape=}")
