@@ -58,6 +58,4 @@ class BinaryAnalysis:
 
     def auc_score(self, y_true, y_pred):
         # Calculate AUC score.
-        # print(f"{y_true.shape=}, {y_pred.shape=}")
-        # print(f"{y_true[0:10]=}, {y_pred[0:10]=}")
         return roc_auc_score(y_true, y_pred)

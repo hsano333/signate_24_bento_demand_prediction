@@ -22,10 +22,10 @@ import optuna
 class MyOptuna:
     DefaultDirectory = "optimization"
 
-    def __init__(self, config):
+    def __init__(self, config, task):
         self.dataset_models = {}
         self.config = Utility().load_yaml_config()
-        self.task = MLTask.Classification
+        self.task = task
         self.config = config
         self.dir_path = Path(__file__).parent.resolve() / self.DefaultDirectory
         self.dir_path.mkdir(parents=True, exist_ok=True)

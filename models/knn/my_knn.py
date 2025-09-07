@@ -12,7 +12,7 @@ import joblib
 
 # from sklearn.ensemble import RandomForestClassifier
 # from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn import datasets, preprocessing
 from sklearn.metrics import classification_report
 
@@ -47,6 +47,7 @@ class MyKNearestNeighbors(IModel):
         self.n_jobs = -1
         # self.n_estimators = self.config["n_estimators"]
         self.is_optimize = self.config.get("is_optimize", False)
+        self.proba = config.get("proba", True)
 
         self.old_score = 0.0
         if os.path.isdir(self.save_dir) is False:
@@ -74,13 +75,17 @@ class MyKNearestNeighbors(IModel):
         (val_data, val_label, _) = self.val_dataset.get_numpy_data()
 
         if self.model is not None:
-            y_pred_proba = self.model.predict_proba(val_data)[:, 1]
-            score = self.evaluation(val_label, y_pred_proba)
+            if self.proba is True:
+                y_pred = self.model.predict_proba(val_data)[:, 1]
+            else:
+                y_pred = self.model.predict(val_data)
+
+            score = self.evaluation(val_label, y_pred)
             print("K Nearest Neighbors Model already exists. Skipping training.")
             print(f"Validation Score: {score:.4f}")
             return
 
-        logistic = KNeighborsClassifier(
+        logistic = KNeighborsRegressor(
             **params,
             # n_neighbors=self.config["n_neighbors"],
             # random_state=self.random_state,
@@ -89,7 +94,10 @@ class MyKNearestNeighbors(IModel):
         )
         self.model = logistic.fit(train_data, train_label)
 
-        y_pred = self.model.predict_proba(val_data)[:, 1]
+        if self.proba is True:
+            y_pred = self.model.predict_proba(val_data)[:, 1]
+        else:
+            y_pred = self.model.predict(val_data)
         # tmp = self.model.predict_proba(val_data)
         # print(f"{tmp=}")
 
@@ -118,8 +126,11 @@ class MyKNearestNeighbors(IModel):
             )
 
     def forecast(self, data):
-        y_pred_proba = self.model.predict_proba(data.numpy())[:, 1]
-        return torch.tensor(y_pred_proba.astype(np.float32))
+        if self.proba is True:
+            y_pred = self.model.predict_proba(data.numpy())[:, 1]
+        else:
+            y_pred = self.model.predict(data.numpy())
+        return torch.tensor(y_pred.astype(np.float32))
 
     def get_model_params(self, trial, model_config):
         return Utility().get_model_params(trial, model_config)

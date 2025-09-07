@@ -20,7 +20,7 @@ import yaml
 class Stacking(IModel):
     DefaultDirectory = "stacking_making_features"
 
-    def __init__(self, config, task=MLTask.Classification):
+    def __init__(self, config, evaluation, task=MLTask.Classification):
         self.name = self.get_name()
         self.config = config
         # self.dataset_models = {}
@@ -30,10 +30,10 @@ class Stacking(IModel):
         self.RANDAOM_STATE = self.config["stacking"]["random_state"]
         self.task = task
         self.oof = OOF(self.name, config, self.dir_path, task)
-        # self.evaluation = evaluation
+        self.evaluation = evaluation
         # self.model_config = self.config["stacking"]["model_config"]
         # self.ForceMake = self.config["stacking"]["force_make"]
-        print(f"{self.KFoldSplit=}, {self.RANDAOM_STATE=}")
+        # print(f"{self.KFoldSplit=}, {self.RANDAOM_STATE=}")
 
     @classmethod
     def get_name(self):

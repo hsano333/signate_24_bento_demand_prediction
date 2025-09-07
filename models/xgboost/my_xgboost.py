@@ -40,12 +40,15 @@ class MyXGBoost(IModel):
         self.test_dataset = test
         self.evaluation = evaluation
         self.save_dir = save_dir
+        if save_dir is None:
+            self.save_dir = Path(__file__).resolve().parent
         self.save_model_path = os.path.join(
             self.save_dir, self.config["model_file_name"]
         )
         self.old_score = 0.0
         self.is_optimize = self.config.get("is_optimize", False)
         self.n_estimators = 150
+        self.proba = config.get("proba", True)
 
         # if "multi" in self.config["objective"]:
         #     self.param = {
@@ -125,6 +128,7 @@ class MyXGBoost(IModel):
 
         # predictions = (y_
         # print(f"XGBoost Predictions: {y_proba=}, {y_pred=}, {train_label[:10]=}")
+        # print(f"{train_label=}, {y_pred=}")
         score = self.evaluation(train_label, y_pred)
         print(f"XGBoost Score: {score:.4f}")
         if score > self.old_score:

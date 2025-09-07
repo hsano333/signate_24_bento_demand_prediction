@@ -13,6 +13,15 @@ class OptunaOptimizer:
         self.model_name = model_info.model_name
         self.dataset = model_info.dataset
         self.task = model_info.task
+        print(f"Task: {self.task}")
+        print(f"Task: {self.task}")
+        print(f"Task: {self.task}")
+        print(f"Task: {self.task}")
+        print(f"Task: {self.task}")
+        print(f"Task: {self.task}")
+        print(f"Task: {self.task}")
+        print(f"Task: {self.task}")
+        print(f"Task: {self.task}")
         self.directory = model_info.directory
         self.transform_label = model_info.transform_label
         self.evaluate = model_info.evaluate

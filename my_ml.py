@@ -12,6 +12,7 @@ from models.knn.my_knn import MyKNearestNeighbors
 from models.svc.my_svc import MySupportVectorMachine
 from models.logistic_regression.my_logistic_regression import MyLogisticRegression
 from dataset.src.processed_dataset import ProcessedDataset
+from dataset.src.time_dataset import TimeDataset
 from dataset.src.processed_dataset_xgboost import ProcessedDatasetXGBoost
 from dataset.src.processed_dataset_dummies import ProcessedDatasetDummies
 from optimizer.my_optuna import MyOptuna
@@ -20,35 +21,45 @@ from common.my_enum import MLTask
 import pandas as pd
 import copy
 from sklearn.metrics import accuracy_score, roc_auc_score
+import numpy as np
+import torch
 
 # ConfigFileName = "config.yaml"
 # config_path = Path(__file__).parent.resolve() / "common" / ConfigFileName
 config = Utility().load_yaml_config()
 
 
-def optimize(models):
-    optimizer = MyOptuna(config)
+def optimize(models, task=MLTask.Classification):
+    optimizer = MyOptuna(config, task)
     for model in models:
         optimizer.add_model(*model)
-    optimizer.optimize_models(MLTask.Classification, True)
+    optimizer.optimize_models(task, True)
 
 
-def optimize_predict(ensemble, train_models, predict_model):
-    dataset = ProcessedDataset(config["original_dataset"], "titanic")
-    dataset.load()
+def optimize_predict(ensemble, train_models, predict_model, task, other_models):
+    other_model = other_models[2]
+    other_dataset = other_models[1]
+    time_dataset_data = other_dataset.get_numpy_data()[2].reshape(-1, 1)
+    pred_time_dataset_data = other_dataset.get_numpy_data()[0].reshape(-1, 1)
+
+    # dataset = ProcessedDataset(config["original_dataset"], "titanic")
+    # dataset.load()
 
     # ensemble = Stacking(config, MLTask.Classification)
     for model in train_models:
         ensemble.add_model(*model)
 
-    result_dataset = ensemble.make_features(forece_make=False)
-    result_dataset.set_raw_label(dataset.get_raw_label())
-    result_dataset.transform_label()
+    tmp_dataset = train_models[0][1]
+    raw_label = tmp_dataset.get_raw_label()
 
-    optimizer = MyOptuna(config)
+    result_dataset = ensemble.make_features(forece_make=False)
+    result_dataset.set_raw_label(raw_label)
+    # result_dataset.transform_label()
+
+    optimizer = MyOptuna(config, task)
     predict_model[1] = result_dataset
     optimizer.add_model(*predict_model)
-    optimizer.optimize_models(MLTask.Classification, True)
+    optimizer.optimize_models(task, True)
 
     ensemble.clear_models()
     # ensemble = Stacking(config, MLTask.Classification)
@@ -66,60 +77,66 @@ def train(ensemble, models):
     # result_dataset = ensemble.make_features(forece_make=True)
 
 
-def predict(ensemble, train_models, predict_model, evaluation):
-    dataset = ProcessedDataset(config["original_dataset"], "titanic")
-    dataset.load()
+def predict(ensemble, train_models, predict_model, evaluation, other_models):
+    other_model = other_models[2]
+    other_dataset = other_models[1]
+    time_dataset_data = other_dataset.get_numpy_data()[2].reshape(-1, 1)
+    pred_time_dataset_data = other_dataset.get_numpy_data()[0].reshape(-1, 1)
 
-    # ensemble = Stacking(
-    #     config,
-    #     MLTask.Classification,
-    # )
     for model in train_models:
         ensemble.add_model(*model)
 
+    dataset = train_models[0][1]
+    raw_label_data = dataset.get_raw_label()
+    test_data = dataset.get_numpy_data()[2]
+
     result_dataset = ensemble.make_features(forece_make=False)
     result_dataset.set_raw_label(dataset.get_raw_label())
-    result_dataset.transform_label()
-    label_encoder = result_dataset.get_label_encoder()
+    # result_dataset.transform_label()
+    # label_encoder = result_dataset.get_label_encoder()
 
     ensemble.clear_models()
     predict_model[1] = result_dataset
     ensemble.add_model(*predict_model)
 
-    # threshold = config["model"][predict_model[0]]["threshold"]
-
-    # final_result = ensemble.forecast_and_get_data()
-    test_data = ensemble.forecast()
-    # pred_data = final_result.get_numpy_data()[0]
-    # label = final_result.get_numpy_data()[1]
-    # test_data = final_result.get_numpy_data()[2]
+    final_result = ensemble.forecast_and_get_data()
+    pred_data = final_result.get_numpy_data()[0]
+    label = final_result.get_numpy_data()[1]
     #
-    # train_score = evaluation(label, pred_data)
+    # print(
+    #     f"{pred_time_dataset_data.shape=}, {pred_data.shape=},{pred_time_dataset_data=}"
+    # )
+    # print(f"{pred_data=}")
+    pred_time = (
+        other_model.forecast(torch.from_numpy(pred_time_dataset_data))
+        .numpy()
+        .reshape(-1)
+    )
 
-    # acc_max = 0.0
+    # print(f"{pred_time=}")
+    # print(f"before:{pred_data.shape=}, {pred_time.shape=}")
+    # print(f"before:{pred_data=}, {pred_time=}, {(pred_data.reshape(-1)* pred_time)=}")
+
+    # pred_data = ((pred_data.reshape(-1)) * pred_time) + pred_time
+    pred_data = (pred_data.reshape(-1)) + pred_time
+    # print(f"after:{pred_data.shape=}, {label.shape=}")
+    # print(f"post:{pred_data=}")
+    train_score = evaluation(raw_label_data, pred_data)
+    print(f"Result Train Result Score: {train_score:.4f}")
     #
-    # steps = [x * 0.001 for x in range(250, 750, 1)]
-    # y_pred = (pred_data >= 0.5).astype(int)
-    # tmp_acc = accuracy_score(label, y_pred)
-    # print(f"thre:0.5 {tmp_acc=}")
-
-    # for tmp_threshold in steps:
-    #     y_pred = (pred_data >= tmp_threshold).astype(int)
-    #     acc = accuracy_score(label, y_pred)
-    #     # print(f"Threshold: {tmp_threshold}, Accuracy: {acc}")
-    #     if acc >= acc_max:
-    #         acc_max = acc
-    #         threshold = tmp_threshold
-    # print(f"Best threshold: {threshold}, Accuracy: {acc_max}")
-
-    # threshold = 0.5
-    # test_data[test_data < threshold] = 0 test_data[test_data >= threshold] = 1
-    # test_data_bool = (test_data >= threshold).astype(int).reshape(-1)
-    # forecast = label_encoder.inverse_transform(test_data_bool.astype(int))
+    # print(f"{dataset_test[10:15, 3:10]=}")
+    test_data = final_result.get_numpy_data()[2]
+    # print(f"{test_data.shape=}, {time_dataset_data.shape=}")
+    test_time = (
+        other_model.forecast(torch.from_numpy(time_dataset_data)).numpy().reshape(-1)
+    )
+    # print(f"{test_data=},{result_time=}")
+    # result_data = (test_data.reshape(-1)) * test_time + test_time
+    result_data = (test_data.reshape(-1)) + test_time
 
     id = dataset.get_test_id()
-    df = pd.DataFrame({"id": id, "activity": test_data.reshape(-1)})
-    df.to_csv("submission.tsv", index=False, header=False, sep="\t")
+    df = pd.DataFrame({"id": id, "activity": result_data.reshape(-1)})
+    df.to_csv("submission.csv", index=False, header=False, sep=",")
 
     # df2 = pd.DataFrame({"activity": pred_data.reshape(-1)})
     # df2.to_csv("submission_pred.tsv", index=False, header=False, sep="\t")

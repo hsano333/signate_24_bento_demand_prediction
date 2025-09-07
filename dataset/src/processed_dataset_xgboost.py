@@ -4,6 +4,7 @@ from sklearn import preprocessing
 from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import KNNImputer
 from sklearn.preprocessing import OneHotEncoder
+from common.my_enum import MLTask
 import joblib
 
 import torch
@@ -13,7 +14,7 @@ import os
 
 
 class ProcessedDatasetXGBoost(Dataset):
-    def __init__(self, config, name="processed_dataset"):
+    def __init__(self, config, name="processed_dataset", time_model=None):
         current_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../")
         self.TRAIN_PATH = os.path.join(current_dir, "data", "original", "train.csv")
         self.TEST_PATH = os.path.join(current_dir, "data", "original", "test.csv")
@@ -24,6 +25,7 @@ class ProcessedDatasetXGBoost(Dataset):
         self.dateset_name = name
         self.config = config
         self.target_feature = self.config["target_feature"]
+        self.time_model = time_model
 
     def get_numpy_data(self):
         return (self.data.numpy(), self.label.numpy(), self.test_data.numpy())
@@ -57,16 +59,20 @@ class ProcessedDatasetXGBoost(Dataset):
         )
         return encoded_data
 
-    def transform_label(self):
-        unique = self.raw_label.unique()
-        self.le = LabelEncoder()
-        raw_np_label = self.le.fit_transform(self.raw_label)
-        self.label = torch.from_numpy(raw_np_label)
-        self.label_number = unique.shape[0]
+    def transform_label(self, task):
+        if task == MLTask.Regression:
+            self.label_number = self.label.shape[0]
+            # self.label = torch.from_numpy(self.label)
+        else:
+            unique = self.raw_label.unique()
+            self.le = LabelEncoder()
+            raw_np_label = self.le.fit_transform(self.label)
+            self.label = torch.from_numpy(self.label)
+            self.label_number = unique.shape[0]
 
     def make_date_id(self):
-        start_date = "2023-10-30"
-        end_date = "2024-12-01"
+        start_date = "2013-10-28"
+        end_date = "2014-12-01"
 
         all_dates = pd.date_range(start=start_date, end=end_date, freq="D")
         df = pd.DataFrame(all_dates, columns=["date"])
@@ -88,7 +94,7 @@ class ProcessedDatasetXGBoost(Dataset):
         data["precipitation"] = data["precipitation"].apply(
             lambda x: -1 if x == "--" else float(x)
         )
-        data["month"] = data["datetime"].apply(lambda x: int(x.split("-")[1]))
+        # data["month"] = data["datetime"].apply(lambda x: int(x.split("-")[1]))
         data["curry"] = data["name"].apply(lambda x: 1 if x.find("カレー") >= 0 else 0)
         data["fun"] = data["remarks"].apply(
             lambda x: 1 if x == "お楽しみメニュー" else 0
@@ -107,14 +113,6 @@ class ProcessedDatasetXGBoost(Dataset):
         ] = "なし"
 
         data["datetime"] = pd.to_datetime(data["datetime"])
-        date_df = self.make_date_id()
-
-        # print(f"pre:{data.columns=}")
-        data = pd.merge(data, date_df, on="datetime", how="left")
-        # print(f"post:{data.columns=}")
-
-        # test
-        # data = self.convert_onehot_encoder(onehot_encoder, data, "name")
 
         data = self.convert_oneshot(data, "event")
         data = self.convert_oneshot(data, "remarks")
@@ -129,15 +127,6 @@ class ProcessedDatasetXGBoost(Dataset):
         # data = self.convert_oneshot(data, "loan")
         # data = self.convert_oneshot(data, "contact")
         # data = self.convert_oneshot(data, "pdays_dummy")
-        # data = self.convert_oneshot(data, "poutcome_dummy")
-        # data = self.convert_oneshot(data, "balance_dummy")
-        # data = self.convert_oneshot(data, "campaign_dummy")
-        # data = self.convert_oneshot(data, "age_dummy")
-        # data = self.convert_oneshot(data, "duration_dummy")
-        # data = self.convert_oneshot(data, "previous_dummy")
-        # data = self.convert_oneshot(data, "day_bin")
-        # data = self.convert_oneshot(data, "duration_contact")
-        print(f"{data.columns=}")
 
         data = data.drop(
             [
@@ -156,10 +145,6 @@ class ProcessedDatasetXGBoost(Dataset):
             ],
             axis=1,
         )
-        # if "duration_contact_unknown0" in data.columns:
-        #     data = data.drop(columns=["duration_contact_unknown0"])
-        # print(f"test_test {data.shape=}, {data[0:]=}")
-        # print(f"No.1:{data.columns=}")
         return data.astype(float)
 
     def load(self):
@@ -175,23 +160,8 @@ class ProcessedDatasetXGBoost(Dataset):
             self.target_feature = loaded_data["target_feature"]
             return
 
-        # scaler = preprocessing.StandardScaler()
-        # campaign_scaler = preprocessing.StandardScaler()
-        # age_scaler = preprocessing.StandardScaler()
-        # duration_scaler = preprocessing.StandardScaler()
-        # previous_scaler = preprocessing.StandardScaler()
-        # balance_scaler = preprocessing.StandardScaler()
-        # pdays_scaler = preprocessing.StandardScaler()
-
         train = pd.read_csv(self.TRAIN_PATH)
         test = pd.read_csv(self.TEST_PATH)
-        train_test = pd.concat([train, test], axis=0, ignore_index=True)
-        # train_test["embarked"].fillna(("S"), inplace=True)
-        # train_test["embarked"] = train_test["embarked"].fillna("S")
-        # train_test["sex"] = LabelEncoder().fit_transform(train_test["sex"])
-        # train_test["embarked"] = LabelEncoder().fit_transform(
-        #     train_test["embarked"].astype(str)
-        # )
 
         self.test_id = test["datetime"]
         self.raw_label = train[self.target_feature]
@@ -199,44 +169,27 @@ class ProcessedDatasetXGBoost(Dataset):
         ohe = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
         onehot_encoder = ohe.fit(train[["name"]])
 
-        # scaler.fit(train_test[["age", "fare", "Family"]])
+        train["datetime"] = pd.to_datetime(train["datetime"])
+        test["datetime"] = pd.to_datetime(test["datetime"])
+        date_df = self.make_date_id()
+        train = pd.merge(train, date_df, on="datetime", how="left")
+        test = pd.merge(test, date_df, on="datetime", how="left")
 
-        # day_ratio = (
-        #     train.groupby(["day", "month"])["y"].mean().reset_index(name="y_true_ratio")
-        # )
-        # day_ratio["day_bin"] = pd.cut(day_ratio["y_true_ratio"], bins=6, labels=False)
-        # train = train.merge(ratio, on=["day", "month"], how="left")
-        # train["daday_bin"] = pd.cut(train["y_true_ratio"], bins=6, labels=False)
-        # train = train.drop(columns=["y_true_ratio"])
-        # train["tmp_pdays"] = train["pdays"]
-        # train.loc[train["tmp_pdays"] <= 0, "tmp_pdays"] = 0
-
-        # campaign_scaler.fit(train[["campaign"]])
-        # age_scaler.fit(train[["age"]])
-        # duration_scaler.fit(train[["duration"]])
-        # previous_scaler.fit(train[["previous"]])
-        # balance_scaler.fit(train[["balance"]])
-        # pdays_scaler.fit(train[["tmp_pdays"]])
-        #
-        # scalers = {
-        #     "campaign": campaign_scaler,
-        #     "age": age_scaler,
-        #     "duration": duration_scaler,
-        #     "previous": previous_scaler,
-        #     "balance": balance_scaler,
-        #     "pdays": pdays_scaler,
-        # }
-        # train = train.drop(columns=["tmp_pdays"])
+        train["y_avg"] = self.time_model.forecast(
+            torch.tensor(train[["week_id"]].values)
+        )
+        # print(f"{train['y_avg'][0:40]=}")
+        # print(f"before:{train['y'][0:35]=}")
+        # train["y"] = (train["y"] - train["y_avg"]) / train["y_avg"]
+        train["y"] = train["y"] - train["y_avg"]
+        # print(f"after:{train['y'][0:35]=}")
+        train = train.drop(columns=["y_avg"])
 
         train = self.mypreprocessing(train, onehot_encoder)
         test = self.mypreprocessing(test, onehot_encoder)
         tmp_label = train[self.target_feature]
         train = train.drop([self.target_feature], axis=1)
-        # print(f"{train.shape=}, {test.shape=}, {tmp_label.shape=}")
-        # print(f"{train=}")
-        # print(f"{test=}")
 
-        # train_test = pd.concat([train, test], axis=0, ignore_index=True)
         train_scaled = pd.DataFrame(
             # scaler.fit_transform(train),
             train,
@@ -254,12 +207,8 @@ class ProcessedDatasetXGBoost(Dataset):
         self.label = self.convert_np_to_torch(tmp_label).unsqueeze(
             1
         )  # Add a dimension for label
-        # self.label_number = self.label.shape[1]
         self.label_number = 1
         self.test_data = self.convert_np_to_torch(test_scaled)
-        # print(f"{self.data.shape=}, {self.label.shape=}, {self.test_data.shape=}")
-        # print(f"{self.data=}")
-        # print(f"{self.label=}")
 
         data_to_save = {
             "data": self.data,

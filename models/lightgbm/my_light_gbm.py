@@ -119,10 +119,6 @@ class MyLightGBM(IModel):
         # y_pred = y_pred_proba.argmax(axis=1)
 
         # 評価
-        # print(f"{val_label.shape=}")
-        # print(f"{y_pred.shape=}")
-        # print(f"{val_label[0:10]=}")
-        # print(f"{y_pred[0:10]=}")
         score = self.evaluation(val_label, y_pred_proba)
         print(f"Validation Score: {score:.4f}")
 

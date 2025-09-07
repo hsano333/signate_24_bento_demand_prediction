@@ -1,22 +1,28 @@
 import my_ml
 import sys
+import numpy as np
 from models.mytorch.my_torch import MyTorch
 from ensemble.stacking import Stacking
 from ensemble.blending import Blending
 from pathlib import Path
 import yaml
+import torch
 from common.utility import Utility
 
 from models.xgboost.my_xgboost import MyXGBoost
 from models.lightgbm.my_light_gbm import MyLightGBM
 from models.randomforest.my_randomforest import MyRandomForest
 from models.knn.my_knn import MyKNearestNeighbors
+from models.linear_regression.my_linear_regression import MyLinearRegression
 from models.svc.my_svc import MySupportVectorMachine
 from models.logistic_regression.my_logistic_regression import MyLogisticRegression
+from models.ransac.my_ransac import MyRANSAC
+from models.polynomial.my_polynomial import MyPolynomial
 from dataset.src.processed_dataset import ProcessedDataset
 from dataset.src.time_dataset import TimeDataset
 from dataset.src.processed_dataset_xgboost import ProcessedDatasetXGBoost
 from sklearn.metrics import root_mean_squared_error
+from sklearn.linear_model import LinearRegression
 
 # from dataset.src.processed_dataset_dummies import ProcessedDatasetDummies
 from optimizer.my_optuna import MyOptuna
@@ -27,32 +33,71 @@ import copy
 
 args = sys.argv
 config = Utility().load_yaml_config()
-task = MLTask.Classification
+task = MLTask.Regression
 BaseEvaluation = root_mean_squared_error
+
+
+def get_time_model():
+    config = Utility().load_yaml_config()
+    time_dataset = TimeDataset(config["original_dataset"], "time_bento")
+    time_dataset.load()
+    (time_data, time_label, test_data) = time_dataset.get_numpy_data()
+
+    # other_model = other_models[0]
+    time_model_name = "xgboost"
+    # time_dataset = other_model[1]
+    # tmp_model = MyPolynomial
+    tmp_model = MyXGBoost
+    time_evaluation = root_mean_squared_error
+
+    time_test = time_dataset.get_numpy_data()[0]
+    dataset_data = time_dataset.get_train_dataset()
+    dataset_test = time_dataset.get_test_dataset()
+
+    time_model = tmp_model(
+        config["model"][time_model_name],
+        None,
+        dataset_data,
+        dataset_data,
+        dataset_test,
+        time_evaluation,
+    )
+    params = config["model"][time_model_name].get("learned_params", None)
+    time_model.learn(0, params)
+    pred_time_data = time_model.forecast(torch.from_numpy(time_test))
+    # print(f"{pred_time_data=}")
+
+    return time_model
 
 
 def make_models():
     time_dataset = TimeDataset(config["original_dataset"], "time_bento")
     time_dataset.load()
-    dataset = ProcessedDataset(config["original_dataset"], "bento")
+    time_dataset_category = copy.deepcopy(time_dataset)
+    time_model = get_time_model()
+    # exit(0)
+
+    dataset = ProcessedDataset(config["original_dataset"], "bento", time_model)
     dataset.load()
 
     dataset_xgboost = ProcessedDatasetXGBoost(
-        config["xgboost_dataset"], "xgboost_titani"
+        config["xgboost_dataset"], "xgboost_titani", time_model
     )
     dataset_xgboost.load()
-    # dataset_dummies = ProcessedDatasetDummies(
-    #     config["dummies_dataset"], "dummies_titanic"
-    # )
-    # dataset_dummies.load()
 
     dataset_category = copy.deepcopy(dataset)
-    dataset_category.transform_label()
+    dataset_category.transform_label(task)
     dataset_category_xgboost = copy.deepcopy(dataset_xgboost)
-    dataset_category_xgboost.transform_label()
+    dataset_category_xgboost.transform_label(task)
     my_torch = MyTorch
-
+    #
     mytorch = ["mytorch", dataset, my_torch, BaseEvaluation]
+    time_random_forest = [
+        "randomforest",
+        dataset_category,
+        MyRandomForest,
+        BaseEvaluation,
+    ]
     random_forest = [
         "randomforest",
         dataset_category,
@@ -72,6 +117,11 @@ def make_models():
         MyLogisticRegression,
         BaseEvaluation,
     ]
+    # poly = ["poly", time_dataset_category, time_model, BaseEvaluation]
+    poly = ["poly", time_dataset_category, MyPolynomial, BaseEvaluation]
+    # time_xgboost = ["time_xgboost", time_dataset_category, time_model, BaseEvaluation]
+    time_xgboost = ["time_xgboost", time_dataset_category, time_model, BaseEvaluation]
+    # time_xgboost = ["time_xgboost", time_dataset_category, MyXGBoost, BaseEvaluation]
     knn = ["knn", dataset_category, MyKNearestNeighbors, BaseEvaluation]
     svc = ["svc", dataset_category, MySupportVectorMachine, BaseEvaluation]
     models = {
@@ -82,9 +132,12 @@ def make_models():
         "logistic_regression": logistic_regression,
         "knn": knn,
         "svc": svc,
+        "poly": poly,
+        "time_xgboost": time_xgboost,
+        # "time_linear_regression": time_model,
     }
 
-    return models
+    return (models, time_model)
 
 
 def make_predict_models():
@@ -95,9 +148,16 @@ def make_predict_models():
         BaseEvaluation,
     ]
     xgboost = ["result_xgboost", None, MyXGBoost, BaseEvaluation]
+    linear_regression = [
+        "result_linear_regression",
+        None,
+        MyLinearRegression,
+        BaseEvaluation,
+    ]
     models = {
         "xgboost": xgboost,
         "logistic_regression": logistic_regression,
+        "linear_regression": linear_regression,
     }
     return models
 
@@ -105,13 +165,17 @@ def make_predict_models():
 def get_train_models(models):
     selected_models = []
     names = [
-        # "mytorch",
+        "mytorch",
         # "randomforest",
-        # "lightgbm",
         "xgboost",
-        # "logistic_regression",
+        "lightgbm",
         # "knn",
+        # "ransac",
+        # "poly",
+        # "time_xgboost",
+        # "logistic_regression",
         # "svc",
+        # "time_linear_regression",
     ]
     for name in names:
         selected_models.append(models[name])
@@ -119,27 +183,39 @@ def get_train_models(models):
 
 
 def get_predict_model(models):
-    selected_model = models["logistic_regression"]
+    # selected_model = models["logistic_regression"]
     # selected_model = models["xgboost"]
+    selected_model = models["linear_regression"]
     return selected_model
 
 
+# その他必要なモデルをpredictに使用する場合に指定
+def get_other_models(models):
+    selected_models = []
+    selected_models.append(models["poly"])
+    return selected_models
+
+
 def main():
-    train_models = make_models()
+    (all_models, time_model) = make_models()
     predict_models = make_predict_models()
-    train_models = get_train_models(train_models)
+    train_models = get_train_models(all_models)
     predict_model = get_predict_model(predict_models)
-    # ensemble = Stacking(config, MLTask.Classification)
-    ensemble = Blending(config, MLTask.Classification, False)
+    other_models = get_other_models(all_models)
+    ensemble = Stacking(config, BaseEvaluation, task)
+    time_models = all_models["time_xgboost"]
+    # ensemble = Blending(config, MLTask.Classification, False)
 
     if args[1] == "optimize":
-        my_ml.optimize(train_models)
+        my_ml.optimize(train_models, task)
     elif args[1] == "train":
         my_ml.train(ensemble, train_models)
     elif args[1] == "optimize_predict":
-        my_ml.optimize_predict(ensemble, train_models, predict_model)
+        my_ml.optimize_predict(ensemble, train_models, predict_model, task, time_models)
     elif args[1] == "predict":
-        my_ml.predict(ensemble, train_models, predict_model, BaseEvaluation)
+        my_ml.predict(
+            ensemble, train_models, predict_model, BaseEvaluation, time_models
+        )
     else:
         print(
             "Invalid argument. Use 'optimize', 'optimize_predict', 'train', or 'predict'."

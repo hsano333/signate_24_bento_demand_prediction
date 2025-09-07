@@ -76,6 +76,8 @@ class OOF:
     def make_new_feature(self, model, model_name, dataset, directory, evaluation):
         kf = Utility().get_kf(self.task, self.KFoldSplit, self.RANDAOM_STATE)
         (data, label, test) = dataset.get_numpy_data()
+        # print(f"{dataset.get_name()=}")
+        # print(f"{label=}")
         label_number = dataset.get_label_number()
 
         tmp_name = dataset.get_name()
@@ -88,6 +90,7 @@ class OOF:
             split_label = label
         else:
             split_label = label[:, 0]
+        # print(f"{split_label=}")
         y_prob_all = np.zeros(len(data))
         y_test_all = np.zeros(len(test))
         y_true_all = np.zeros(len(data))

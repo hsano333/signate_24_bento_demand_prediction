@@ -10,7 +10,7 @@ import datetime
 import numpy as np
 import joblib
 
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn import datasets, preprocessing
 from sklearn.metrics import classification_report
 from sklearn.metrics import roc_auc_score
@@ -56,6 +56,7 @@ class MyRandomForest(IModel):
             loaded_data = joblib.load(self.save_model_path)
             self.model = loaded_data["model"]
             self.old_score = loaded_data["score"]
+        self.proba = config.get("proba", True)
 
     @classmethod
     def get_name(self):
@@ -66,25 +67,31 @@ class MyRandomForest(IModel):
         pass
 
     def learn(self, i, params=None):
-        # print(f"{params=}")
         (train_data, train_label, _) = self.train_dataset.get_numpy_data()
         (val_data, val_label, _) = self.val_dataset.get_numpy_data()
 
         if self.model is not None:
-            y_pred_proba = self.model.predict_proba(val_data)[:, 1]
-            score = self.evaluation(val_label, y_pred_proba)
+            if self.proba is True:
+                y_pred = self.model.predict_proba(val_data.ravel())[:, 1]
+            else:
+                y_pred = self.model.predict(val_data.ravel())
+            score = self.evaluation(val_label, y_pred)
             print("Random Forest Model already exists. Skipping training.")
             print(f"Validation Accuracy: {score:.4f}")
             return
 
-        randomforest = RandomForestClassifier(
+        randomforest = RandomForestRegressor(
             **params
             # random_state=self.random_state,
             # n_jobs=self.n_jobs,
             # n_estimators=self.n_estimators,
         )
-        self.model = randomforest.fit(train_data, train_label)
-        y_pred = self.model.predict_proba(val_data)[:, 1]
+        self.model = randomforest.fit(train_data, train_label.ravel())
+
+        if self.proba is True:
+            y_pred = self.model.predict_proba(val_data)[:, 1]
+        else:
+            y_pred = self.model.predict(val_data)
 
         # y_pred_proba = self.model.predict_proba(val_data)
         # 評価
@@ -111,14 +118,18 @@ class MyRandomForest(IModel):
             )
 
     def forecast(self, data):
-        y_pred_proba = self.model.predict_proba(data.numpy())[:, 1]
-        return torch.tensor(y_pred_proba.astype(np.float32))
+        # print(f"{data.shape=}, {data=}")
+        if self.proba is True:
+            y_pred = self.model.predict_proba(data.numpy())[:, 1]
+        else:
+            y_pred = self.model.predict(data.numpy())
+        return torch.tensor(y_pred.astype(np.float32))
 
     def get_model_params(self, trial, model_config):
-        pass
+        return Utility().get_model_params(trial, model_config)
 
     def get_model_optimized_params(self, model_config):
-        pass
+        return model_config.get("learned_params", {})
 
     def check_params(self, params):
         pass

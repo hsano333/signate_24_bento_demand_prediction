@@ -73,6 +73,9 @@ class MyTorch(IModel):
         self.epoch = config["epoch"]
         self.config = config
         self.is_optimize = self.config.get("is_optimize", False)
+        self.max_direction = True
+        if config.get("optimize_direction", False) == "minimize":
+            self.max_direction = False
         self.load()
 
     @classmethod
@@ -269,15 +272,8 @@ class MyTorch(IModel):
         if self.is_optimize:
             epoch = int(epoch / 2)
 
-            # **loss_params
-            # pos_weight=self.pos_weight
-            # pos_weight=1.0
-            # )  # nn.BCELoss + sigmoid
         self.manager.set_loss_func(params["loss"])
         self.optimizer = self.manager.get_optimizer(params["optimu"])
-        # if self.is_optimize or self.optimizer is None:
-        #     adam_params = params["adam"]
-        #     self.optimizer = self.manager.get_optimizer(adam_params)
 
         # valid_amp = self.config.get("amp", False)
         print(
@@ -300,10 +296,9 @@ class MyTorch(IModel):
                         f"Trn:score={trn_score}, Val:score={val_score}, score={score}"
                     )
                 if (
-                    score > self.best_score
-                    and (ndx > self.epoch / 5)
-                    and (score > 0.50)
-                ):
+                    (score > self.best_score and self.max_direction and score > 0.5)
+                    or (score <= self.best_score and not self.max_direction)
+                ) and (ndx > self.epoch / 5):
                     self.best_score = score
                     self.save_model(ndx, self.best_score, self.save_model_path)
                 continue
@@ -314,7 +309,10 @@ class MyTorch(IModel):
                 )
                 self.save_model(ndx, val_score, self.save_tmp_model_path)
             # print(f"{score=}, {self.best_score=}, {ndx=}, {self.epoch=}")
-            if score > self.best_score and (ndx > self.epoch / 5) and (score > 0.50):
+            if (
+                (score > self.best_score and self.max_direction and (score > 0.50))
+                or (score <= self.best_score and not self.max_direction)
+            ) and (ndx > self.epoch / 5):
                 self.best_score = score
                 self.save_model(ndx, self.best_score, self.save_model_path)
 
@@ -330,7 +328,7 @@ class MyTorch(IModel):
         is_optimize = self.config.get("is_optimize", False)
         params = {}
         if is_optimize:
-            optimu_config = self.config["optimize"].get("sgd", {})
+            optimu_config = self.config["optimize"].get("mse", {})
             params = Utility().get_float_params(params, optimu_config, trial)
         else:
             tmp_params = model_config.get("learned_params", {})
